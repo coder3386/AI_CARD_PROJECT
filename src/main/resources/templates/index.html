@@ -4,39 +4,93 @@
     <title>AI Card Main Page</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main_style.css}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
-<div class="box">
-    <h1 th:text="${title}">제목</h1>
-    <p th:text="${status}">상태 메시지</p>
-    <hr>
-    <p>Artifact: <strong>cardapp</strong></p>
-    <p>Group: <strong>Alcard</strong></p>
-    <p>test: <strong>배포테스트2번째</strong></p>
-</div>
 
-<div class="box">
-    <h1 th:text="${title}">제목</h1>
+<header class="navbar">
+    <div class="container">
+        <a href="/card/" class="logo">ALCARD<span>.</span></a>
+        <nav class="nav-menu">
+            <a href="#features">기능</a>
+            <a href="#about">서비스 소개</a>
+            <a href="#contact">문의하기</a>
+        </nav>
+        <div class="nav-auth">
+            <a th:href="@{/login}" class="btn-primary">로그인</a>
+            <a th:href="@{/signup}" class="btn-primary">회원가입</a>
+        </div>
+    </div>
+</header>
 
-    <a th:href="@{/pipboy}" class="btn">Pip-Boy 테스트 페이지로 이동</a>
-</div>
+<section class="hero">
+    <div class="container">
+        <div class="hero-content">
+            <span class="badge">Pre-Alpha Test v0.1</span>
+            <h1>혁신적인 명함의<br>새로운 기준을 경험하세요</h1>
+            <p>나만의 명함을 생성하고 공유하는 완벽한 솔루션입니다.</p>
+            <div class="hero-btns">
+                <a href="#" class="btn-primary large">시작하기</a>
+                <a th:href="@{/viewDemo}" class="btn-secondary large">데모 보기</a>
+            </div>
+        </div>
+    </div>
+</section>
 
-<style>
-    /* 간단한 버튼 디자인 */
-    .btn {
-        display: inline-block;
-        padding: 10px 20px;
-        background-color: #00ff00; /* 폴아웃 느낌의 초록색 */
-        color: black;
-        text-decoration: none;
-        border-radius: 5px;
-        font-weight: bold;
-        margin-top: 20px;
-    }
-    .btn:hover {
-        background-color: #008800;
-    }
-</style>
+<section id="features" class="features">
+    <div class="container">
+        <div class="section-header">
+            <h2>핵심 기능</h2>
+            <p>나만의 명함 생성과 편리한 명함관리</p>
+        </div>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="icon-box"><i data-lucide="wand-2"></i></div>
+                <h3>AI 명함 생성</h3>
+                <p>로컬 AI로 사용자 친화적인 디지털 명함을 생성합니다.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon-box"><i data-lucide="users-2"></i></div>
+                <h3>편리함 명함 관리</h3>
+                <p>구글 주소록과 연동하여 강력하고도 편리한 명함 관리 서비스를 제공합니다.</p>
+            </div>
+            <div class="feature-card">
+                <div class="icon-box"><i data-lucide="bar-chart-3"></i></div>
+                <h3>명함 분석</h3>
+                <p>Google Analytics를 통한 시각적인 명함 분석기능을 제공합니다.</p>
+            </div>
+        </div>
+    </div>
+</section>
 
+<footer class="footer">
+    <div class="container">
+        <div class="footer-top">
+            <div class="footer-info">
+                <span class="logo">ALCARD.</span>
+                <p>당신의 비즈니스를 한 단계 더 성장시킵니다.</p>
+            </div>
+            <div class="footer-links">
+                <div class="link-group">
+                    <h4>Product</h4>
+                    <a href="#">Features</a>
+                    <a href="#">Pricing</a>
+                </div>
+                <div class="link-group">
+                    <h4>Company</h4>
+                    <a href="#">About</a>
+                    <a href="#">SNS</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>&copy; 2026 Alcard Inc. All rights reserved.</p>
+        </div>
+    </div>
+</footer>
+
+<script>lucide.createIcons();</script>
 </body>
 </html>

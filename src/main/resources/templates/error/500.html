@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>500 - 서버 오류</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/error_style.css}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+
+
+<body>
+<div class="bg-decoration"></div>
+
+<div class="error-card">
+    <div class="error-code">500</div>
+    <div class="error-msg">서버에 오류가 발생했습니다!</div>
+    <div class="error-sub">
+        내부 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.<br>
+        아래 버튼을 눌러 메인화면으로 돌아가세요.
+    </div>
+    <a th:href="@{/}" class="btn-home">홈으로 돌아가기</a>
+</div>
+</body>
+</html>
