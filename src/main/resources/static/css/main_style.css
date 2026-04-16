@@ -1,0 +1,269 @@
+/* --- 변수 설정 --- */
+:root {
+    --primary-color: #8B5A2B; /* 메인 갈색 (지갑 색상) */
+    --primary-dark: #5D3A1A; /* 진한 갈색 (호버용) */
+    --accent-yellow: #FFD700; /* 강조 노란색 (골드) */
+    --text-main: #3D2B1F; /* 텍스트용 아주 진한 갈색 */
+    --text-sub: #7A6353; /* 보조 텍스트 (연갈색) */
+    --bg-light: #FFFBEB; /* 배경용 아주 연한 노란색 (바닐라 크림) */
+    --white: #FFFFFF;
+    --border-color: #E5D5C5; /* 연한 베이지색 테두리 */
+}
+
+/* --- 기본 세팅 --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Pretendard', sans-serif;
+    color: var(--text-main);
+    line-height: 1.6;
+    overflow-x: hidden;
+    background-color: var(--bg-light);
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+    transition: 0.3s;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* --- Header --- */
+.navbar {
+    height: 70px;
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.navbar .container {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.logo span {
+    color: var(--primary-color);
+}
+
+.nav-menu {
+    display: flex;
+    gap: 30px;
+}
+
+.nav-menu a {
+    font-weight: 500;
+    color: var(--text-sub);
+}
+
+.nav-menu a:hover {
+    color: var(--primary-color);
+}
+
+.nav-auth {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+/* --- Buttons --- */
+.btn-primary {
+    background: var(--primary-color);
+    color: #FFFBEB;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    background: var(--primary-dark);
+}
+
+.btn-secondary {
+    background: #e5e7eb;
+    color: var(--text-main);
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.btn-primary.large, .btn-secondary.large {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+}
+
+/* --- Hero Section --- */
+.hero {
+    padding: 100px 0;
+    background: linear-gradient(to bottom, #FEF3C7, #FFFFFF);
+    text-align: center;
+}
+
+.badge {
+    background: var(--accent-yellow);
+    color: var(--primary-dark);
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: inline-block;
+}
+
+.hero h1 {
+    font-size: 3.5rem;
+    line-height: 1.2;
+    margin-bottom: 25px;
+    font-weight: 800;
+}
+
+.hero p {
+    font-size: 1.25rem;
+    color: var(--text-sub);
+    max-width: 700px;
+    margin: 0 auto 40px;
+}
+
+.hero-btns {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+/* --- Features Section --- */
+.features {
+    padding: 100px 0;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 60px;
+}
+
+.section-header h2 {
+    font-size: 2.2rem;
+    margin-bottom: 15px;
+}
+
+.section-header p {
+    color: var(--text-sub);
+}
+
+.feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 30px;
+}
+
+.feature-card {
+    padding: 40px;
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    transition: 0.3s;
+}
+
+.feature-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.icon-box {
+    width: 50px;
+    height: 50px;
+    background: #FEF3C7;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.feature-card h3 {
+    margin-bottom: 15px;
+}
+
+.feature-card p {
+    color: var(--text-sub);
+    font-size: 0.95rem;
+}
+
+/* --- Footer --- */
+.footer {
+    background: var(--bg-light);
+    padding: 80px 0 40px;
+    border-top: 1px solid var(--border-color);
+}
+
+.footer-top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 50px;
+}
+
+.footer-links {
+    display: flex;
+    gap: 80px;
+}
+
+.link-group h4 {
+    margin-bottom: 20px;
+    font-size: 1rem;
+}
+
+.link-group a {
+    display: block;
+    color: var(--text-sub);
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+.footer-bottom {
+    border-top: 1px solid var(--border-color);
+    padding-top: 30px;
+    text-align: center;
+    color: var(--text-sub);
+    font-size: 0.85rem;
+}
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    .nav-menu, .nav-auth {
+        display: none;
+    }
+
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .feature-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .footer-top {
+        flex-direction: column;
+        gap: 40px;
+    }
+}
