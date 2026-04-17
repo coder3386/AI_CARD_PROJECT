@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 생성 결과</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/sfr004/card.css}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+</head>
+<body>
+
+<div class="generate-page">
+    <div class="generate-container">
+        <div class="top-title-box">
+            <span class="page-badge">RESULT</span>
+            <h1>AI 생성 결과 미리보기</h1>
+            <p>생성된 JSON 결과와 디지털 명함 화면을 확인할 수 있습니다.</p>
+        </div>
+
+        <div class="generate-grid">
+            <div class="form-panel">
+                <div class="panel-header">
+                    <h2>JSON 결과</h2>
+                    <p>LLM이 생성한 핵심 결과입니다.</p>
+                </div>
+
+                <div class="json-box">
+<pre th:text="'name=' + ${result.name} + '
+title=' + ${result.title} + '
+intro=' + ${result.intro} + '
+themeColor=' + ${result.themeColor} + '
+layoutType=' + ${result.layoutType}"></pre>
+                </div>
+
+                <div class="btn-row">
+                    <a th:href="@{/generate}" class="btn-primary link-btn">다시 생성하기</a>
+                </div>
+            </div>
+
+            <div class="preview-panel">
+                <div class="panel-header">
+                    <h2>명함 미리보기</h2>
+                    <p>생성된 디지털 명함 카드 화면입니다.</p>
+                </div>
+
+                <div class="mockup-wrap">
+                    <div class="phone-mockup">
+                        <div class="preview-card-demo result-card">
+                            <div class="profile-ring"
+                                 th:style="'background: linear-gradient(135deg, ' + ${result.themeColor} + ', #9C6B30)'">
+                                <div class="profile-circle"></div>
+                            </div>
+
+                            <h3 th:text="${result.name}">이름</h3>
+                            <p class="demo-role" th:text="${result.title}">직책</p>
+
+                            <div class="demo-info-box">
+                                <p th:text="'📧 ' + ${result.email}">이메일</p>
+                                <p th:text="'📞 ' + ${result.phone}">전화번호</p>
+                                <p th:text="'✨ ' + ${result.intro}">소개문</p>
+                            </div>
+
+                            <div class="demo-menu">
+                                <span class="active">Home</span>
+                                <span>Career</span>
+                                <span>Contact</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-text">
+                    <p th:text="'레이아웃 유형: ' + ${result.layoutType}">레이아웃 유형</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>AI 명함 생성</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" th:href="@{/css/sfr004/card.css}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+</head>
+<body>
+
+<div class="generate-page">
+  <div class="generate-container">
+    <div class="top-title-box">
+      <span class="page-badge">SFR-004</span>
+      <h1>AI 기반 디지털 명함 생성</h1>
+      <p>개인정보와 원하는 분위기를 입력하면 AI가 명함 초안을 생성합니다.</p>
+    </div>
+
+    <div class="generate-grid">
+      <div class="form-panel">
+        <div class="panel-header">
+          <h2>명함 정보 입력</h2>
+          <p>내 정보를 불러오거나 직접 입력해 주세요.</p>
+        </div>
+
+        <form th:action="@{/generate}" th:object="${requestDto}" method="post" class="form-box">
+          <label>이름</label>
+          <input type="text" th:field="*{name}" placeholder="이름 입력">
+
+          <label>이메일</label>
+          <input type="email" th:field="*{email}" placeholder="이메일 입력">
+
+          <label>전화번호</label>
+          <input type="text" th:field="*{phone}" placeholder="전화번호 입력">
+
+          <label>직책</label>
+          <input type="text" th:field="*{title}" placeholder="직책 입력">
+
+          <label>자기소개</label>
+          <textarea th:field="*{intro}" rows="4" placeholder="자기소개 입력"></textarea>
+
+          <label>원하는 느낌</label>
+          <input type="text" th:field="*{stylePrompt}" placeholder="예: 심플하고 블루톤, 모바일 느낌">
+
+          <div class="btn-row">
+            <button type="submit" class="btn-primary">AI 생성</button>
+          </div>
+        </form>
+
+        <form th:action="@{/generate/load-my-info}" method="post" class="inline-form">
+          <button type="submit" class="btn-secondary">내 정보 불러오기</button>
+        </form>
+      </div>
+
+      <div class="preview-panel">
+        <div class="panel-header">
+          <h2>미리보기 안내</h2>
+          <p>생성 전 기본 예시 화면입니다.</p>
+        </div>
+
+        <div class="mockup-wrap">
+          <div class="phone-mockup">
+            <div class="preview-card-demo">
+              <div class="profile-ring">
+                <div class="profile-circle"></div>
+              </div>
+
+              <h3>홍 길 동</h3>
+              <p class="demo-role">AI Tech Lead / Developer</p>
+
+              <div class="demo-info-box">
+                <p>📍 서울특별시 거주</p>
+                <p>🎓 컴퓨터공학 전공</p>
+                <p>✨ "AI로 일상을 연결합니다"</p>
+              </div>
+
+              <div class="demo-menu">
+                <span class="active">Home</span>
+                <span>Career</span>
+                <span>Contact</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="guide-text">
+          <p>입력값과 스타일 요청을 기반으로<br>오른쪽과 비슷한 카드형 명함 결과를 생성합니다.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
