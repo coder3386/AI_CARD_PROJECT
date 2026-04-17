@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <title>예상치 못한 오류</title>
+    <title>에러 발생</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/error_style.css}">
@@ -9,14 +9,14 @@
 
 
 <body>
-<div class="bg-decoration"></div>
+<div class="bg-circle" style="width: 400px; height: 400px; top: -100px; left: -100px;"></div>
+<div class="bg-circle" style="width: 300px; height: 300px; bottom: -50px; right: -50px;"></div>
 
 <div class="error-card">
-    <div class="error-code">ERROR</div>
-    <div class="error-msg">예상치 못한 오류</div>
-    <div class="error-sub">
-        예상치 못한 오류가 발생하였습니다.<br>
-        아래 버튼을 눌러 메인화면으로 돌아가세요.
+    <div class="error-code " th:text="${error.error_code}">000</div>
+    <div class="error-msg" th:text="${error.error_title}">Error_title</div>
+    <div class="error-sub" th:text="${error.error_message}">
+        Error_description
     </div>
     <a th:href="@{/}" class="btn-home">홈으로 돌아가기</a>
 </div>

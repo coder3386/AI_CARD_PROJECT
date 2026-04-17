@@ -8,5 +8,23 @@
 test
 <a th:href="@{/test-403}" class="btn-primary">403에러 강제 생성</a>
 <a th:href="@{/test-400}" class="btn-primary">400에러 강제 생성</a>
+
+<a th:href="@{/test-400}" class="btn-primary">400에러(잘못된 요청)</a>
+<a th:href="@{/test-401}" class="btn-primary">401에러(권한 없음)</a>
+<a th:href="@{/test-403}" class="btn-primary">403에러(접근 거부)</a>
+<a th:href="@{/test-404}" class="btn-primary">404에러(찾을수 없음)</a>
+<a th:href="@{/test-405}" class="btn-primary">405에러(허용되지 않는 방식)</a>
+<a th:href="@{/test-406}" class="btn-primary">406에러(받아들일수 없음)</a>
+<a th:href="@{/test-408}" class="btn-primary">408에러(요청시간 초과)</a>
+<a th:href="@{/test-429}" class="btn-primary">429에러(너무 많은 요청)</a>
+<a th:href="@{/test-418}" class="btn-primary">418에러(찻주전자)</a>
+
+<a th:href="@{/test-500}" class="btn-primary">500에러(내부 서버 오류)</a>
+<a th:href="@{/test-501}" class="btn-primary">501에러(미지원 기능)</a>
+<a th:href="@{/test-502}" class="btn-primary">502에러(게이트웨이 불량)</a>
+<a th:href="@{/test-503}" class="btn-primary">503에러(점검 중입니다)</a>
+
+<a th:href="@{/test-000}" class="btn-primary">000에러(예상치 못한 오류)</a>
+
 </body>
 </html>
