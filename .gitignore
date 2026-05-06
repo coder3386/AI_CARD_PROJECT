@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### AI Card local files ###
+.env
+.env.*
+generated-cards/
+.m2repo/
+spring-boot-run*.log

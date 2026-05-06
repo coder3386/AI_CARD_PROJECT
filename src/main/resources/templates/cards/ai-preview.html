@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 명함 미리보기</title>
+    <link rel="stylesheet" th:href="@{/css/ai-card.css}">
+</head>
+<body class="ai-card-page">
+<main class="ai-preview-shell">
+    <section class="ai-preview-stage">
+        <div class="ai-preview-toolbar">
+            <a class="ai-card-secondary-button" th:href="@{/cards/new}">새 명함</a>
+            <a class="ai-card-secondary-button" th:href="@{/public/card/{publicUrl}(publicUrl=${card.publicUrl})}" target="_blank">공개 페이지</a>
+        </div>
+        <div class="ai-preview-frame-wrap">
+            <iframe id="cardPreviewFrame" class="ai-preview-frame" title="명함 미리보기" th:srcdoc="${previewDocument}"></iframe>
+        </div>
+    </section>
+
+    <aside class="ai-edit-panel">
+        <div class="ai-card-header compact">
+            <p class="ai-card-kicker">Preview</p>
+            <h1>글자 수정</h1>
+            <p class="ai-public-url" th:text="'public_url: ' + ${card.publicUrl}">public_url</p>
+        </div>
+
+        <form class="ai-card-form" th:action="@{/cards/{cardId}/update-text(cardId=${card.cardId})}" method="post">
+            <div class="ai-form-section-title">기본정보</div>
+            <label>
+                이름
+                <input data-preview-target="nameText" type="text" name="displayName" th:value="${card.displayName}">
+            </label>
+            <label>
+                직무 / 직책
+                <input data-preview-target="jobText" type="text" name="jobTitle" th:value="${card.jobTitle}">
+            </label>
+            <label>
+                회사 / 소속
+                <input data-preview-target="companyText" type="text" name="company" th:value="${card.company}">
+            </label>
+            <label>
+                부서 / 전공
+                <input data-preview-target="departmentText" type="text" name="department" th:value="${card.department}">
+            </label>
+            <label>
+                자기소개
+                <textarea data-preview-target="introText" name="intro" rows="5" th:text="${card.intro}"></textarea>
+            </label>
+            <label>
+                이메일
+                <input data-preview-target="emailText" type="email" name="email" th:value="${card.email}">
+            </label>
+            <label>
+                전화번호
+                <input data-preview-target="phoneText" type="text" name="phone" th:value="${card.phone}">
+            </label>
+
+            <details class="ai-extra-panel">
+                <summary>기타</summary>
+                <div class="ai-extra-actions">
+                    <button type="button" data-extra-add="SKILL">기술 추가</button>
+                    <button type="button" data-extra-add="CERTIFICATE">자격증 추가</button>
+                    <button type="button" data-extra-add="PORTFOLIO">포트폴리오 추가</button>
+                    <button type="button" data-extra-add="LINK">링크 추가</button>
+                    <button type="button" data-extra-add="PHOTO">사진 URL 추가</button>
+                </div>
+
+                <div class="ai-extra-list" data-extra-list>
+                    <div class="ai-extra-row" th:each="item, iter : ${extraItems}" data-extra-row>
+                        <input type="hidden" data-extra-field="itemType" th:name="|extraItems[${iter.index}].itemType|" th:value="${item.itemType}">
+                        <div class="ai-extra-row-head">
+                            <strong th:text="${item.itemType}">SKILL</strong>
+                            <button type="button" data-extra-remove>삭제</button>
+                        </div>
+                        <label>
+                            제목
+                            <input data-extra-field="title" th:name="|extraItems[${iter.index}].title|" th:value="${item.title}" placeholder="Java, 정보처리기사, GitHub">
+                        </label>
+                        <label>
+                            링크
+                            <input data-extra-field="url" th:name="|extraItems[${iter.index}].url|" th:value="${item.url}" placeholder="https://example.com">
+                        </label>
+                        <label>
+                            설명
+                            <textarea data-extra-field="description" th:name="|extraItems[${iter.index}].description|" rows="2" th:text="${item.description}" placeholder="간단한 설명"></textarea>
+                        </label>
+                        <label>
+                            사진 URL
+                            <input data-extra-field="imageUrl" th:name="|extraItems[${iter.index}].imageUrl|" th:value="${item.imageUrl}" placeholder="https://example.com/photo.jpg">
+                        </label>
+                    </div>
+                </div>
+            </details>
+
+            <button class="ai-card-primary-button" type="submit">저장 후 HTML 재생성</button>
+        </form>
+    </aside>
+</main>
+<script th:src="@{/js/ai-card-preview.js}"></script>
+</body>
+</html>
