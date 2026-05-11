@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 명함 생성</title>
+    <link rel="stylesheet" th:href="@{/css/ai-card.css}">
+</head>
+<body class="ai-card-page">
+<main class="ai-card-shell">
+    <section class="ai-card-form-panel">
+        <div class="ai-card-header">
+            <p class="ai-card-kicker">AI Digital Business Card</p>
+            <h1>AI 명함 생성</h1>
+        </div>
+
+        <form class="ai-card-form" th:action="@{/cards/generate}" th:object="${cardCreateRequest}" method="post">
+            <div class="ai-form-section-title">기본정보</div>
+            <div class="ai-card-grid">
+                <label>
+                    이름
+                    <input type="text" th:field="*{displayName}" placeholder="홍길동" required>
+                </label>
+                <label>
+                    직무 / 직책
+                    <input type="text" th:field="*{jobTitle}" placeholder="백엔드 개발자">
+                </label>
+                <label>
+                    회사 / 소속
+                    <input type="text" th:field="*{company}" placeholder="AI Card Lab">
+                </label>
+                <label>
+                    부서 / 전공
+                    <input type="text" th:field="*{department}" placeholder="컴퓨터공학과">
+                </label>
+                <label>
+                    이메일
+                    <input type="email" th:field="*{email}" placeholder="test@example.com">
+                </label>
+                <label>
+                    전화번호
+                    <input type="text" th:field="*{phone}" placeholder="010-1234-5678">
+                </label>
+            </div>
+
+            <label>
+                자기소개
+                <textarea th:field="*{intro}" rows="5" placeholder="나를 가장 잘 보여주는 소개를 적어주세요."></textarea>
+            </label>
+
+            <div class="ai-card-grid">
+                <label>
+                    원하는 분위기
+                    <input type="text" th:field="*{mood}" placeholder="전문적, 세련됨, 따뜻함">
+                </label>
+                <label>
+                    선호 색상
+                    <input type="text" th:field="*{preferredColor}" placeholder="네이비, 민트, 화이트">
+                </label>
+            </div>
+
+            <details class="ai-extra-panel">
+                <summary>기타</summary>
+                <div class="ai-extra-actions">
+                    <button type="button" data-extra-add="SKILL">기술 추가</button>
+                    <button type="button" data-extra-add="CERTIFICATE">자격증 추가</button>
+                    <button type="button" data-extra-add="PORTFOLIO">포트폴리오 추가</button>
+                    <button type="button" data-extra-add="LINK">링크 추가</button>
+                    <button type="button" data-extra-add="PHOTO">사진 URL 추가</button>
+                </div>
+                <div class="ai-extra-list" data-extra-list></div>
+            </details>
+
+            <button class="ai-card-primary-button" type="submit">GPT 생성</button>
+        </form>
+    </section>
+</main>
+<script th:src="@{/js/ai-card-preview.js}"></script>
+</body>
+</html>
