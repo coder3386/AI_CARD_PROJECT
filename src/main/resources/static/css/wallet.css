@@ -1,0 +1,112 @@
+:root {
+    --wallet-color: #8B5A2B; /* 갈색 지갑 */
+    --card-color: #FDE047; /* 노란색 카드 */
+}
+
+/* 전체 화면 오버레이 */
+.screen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: none; /* 기본 숨김 */
+    z-index: 998;
+}
+
+/* 지갑 래퍼 */
+.wallet-wrapper {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 1000;
+    cursor: grab;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* 지갑 아이콘 스타일 */
+.wallet-icon {
+    width: 140px;
+    height: 90px;
+    background: var(--wallet-color);
+    border-radius: 10px;
+    position: relative;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.2s;
+}
+
+.wallet-detail {
+    position: absolute;
+    top: 50%;
+    width: 100%;
+    height: 2px;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.wallet-text {
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    z-index: 2;
+}
+
+/* 카드 공통 스타일 */
+.cards-stack {
+    position: absolute;
+    bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.card {
+    width: 120px;
+    height: 70px;
+    background: var(--card-color);
+    border: none;
+    border-radius: 10px;
+    font-weight: bold;
+    color: #45290E;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transform: translateY(100px);
+    transition: transform 0.4s, hover 0.2s;
+}
+
+.card:hover {
+    transform: scale(1.05) !important;
+    background: #facc15;
+}
+
+/* 활성화 상태 (지갑 클릭 시) */
+.wallet-wrapper.active .cards-stack {
+    bottom: 80px; /* 지갑 위로 부상 */
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.wallet-wrapper.active .card-1 {
+    transform: translateY(0);
+    transition-delay: 0.2s;
+}
+
+.wallet-wrapper.active .card-2 {
+    transform: translateY(0);
+    transition-delay: 0.22s;
+}
+
+.wallet-wrapper.active .card-3 {
+    transform: translateY(0);
+    transition-delay: 0.25s;
+}
