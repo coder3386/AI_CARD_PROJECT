@@ -14,6 +14,7 @@ public class ErrorDTO {
         this.error_code = type.getCode();
         this.error_title = type.getTitle();
         this.error_message = type.getDescription();
+
     }
 
 }
