@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Interactive Digital Business Card</title>
+    <link rel="stylesheet" th:href="@{/css/wallet.css}">
     <style>
         :root {
             --primary-color: #4ca1af;
@@ -289,5 +290,21 @@
         event.currentTarget.classList.add('active');
     }
 </script>
+
+
+<div id="screenOverlay" class="screen-overlay"></div>
+<div id="walletWrapper" class="wallet-wrapper">
+    <div class="cards-stack">
+        <button class="card card-1" th:onclick="|location.href='@{/user/profile}'|">👤 프로필</button>
+        <button class="card card-2" th:onclick="|location.href='@{/card/mycard}'|">💳 내 명함</button>
+        <button class="card card-3" th:onclick="|location.href='@{/settings}'|">⚙️ 설정</button>
+    </div>
+    <div id="walletIcon" class="wallet-icon">
+        <div class="wallet-detail"></div>
+        <span class="wallet-text">ALCARD</span>
+    </div>
+</div>
+
+<script th:src="@{/js/wallet.js}"></script>
 </body>
 </html>

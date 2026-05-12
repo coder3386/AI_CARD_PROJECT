@@ -27,7 +27,7 @@ public class SecurityConfig {
 
                 // B. URL별 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/main", "/card/join", "/card/login", "/css/**", "/js/**").permitAll() // 누구나 접근 가능
+                        .requestMatchers("/", "/main", "/viewDemo", "/card/join", "/card/login", "/css/**", "/js/**").permitAll() // 누구나 접근 가능
                         .anyRequest().authenticated() // 그 외 모든 요청은 로그인해야함
                 )
 
