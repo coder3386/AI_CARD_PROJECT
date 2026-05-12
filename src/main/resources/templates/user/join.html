@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>로그인</title>
+    <title>회원가입</title>
     <link rel="stylesheet" as="style" crossorigin
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css"/>
 
@@ -13,16 +13,12 @@
 <body>
 <div class="auth-wrapper">
     <div class="auth-card">
-        <h2>로그인</h2>
+        <h2>회원가입</h2>
 
-        <form th:action="@{/card/login}" method="post">
-            <div th:if="${param.error}" class="error-msg">
-                아이디 또는 비밀번호가 잘못되었습니다.
-            </div>
-
+        <form th:action="@{/card/join}" method="post">
             <div class="form-group">
                 <label>아이디</label>
-                <input type="text" name="username" placeholder="아이디를 입력해주세요" required>
+                <input type="text" name="loginid" placeholder="사용할 아이디를 입력해주세요" required>
             </div>
 
             <div class="form-group">
@@ -30,12 +26,17 @@
                 <input type="password" name="password" placeholder="비밀번호를 입력해주세요" required>
             </div>
 
-            <button type="submit" class="btn-primary auth-btn">로그인</button>
+            <div class="form-group">
+                <label>이름</label>
+                <input type="text" name="name" placeholder="이름을 입력해주세요" required>
+            </div>
+
+            <button type="submit" class="btn-primary auth-btn">가입하기</button>
         </form>
 
         <div class="auth-links">
-            계정이 없으신가요?<br>
-            <a th:href="@{/card/join}">회원가입 하러가기</a>
+            이미 계정이 있으신가요?<br>
+            <a th:href="@{/card/login}">로그인</a>
         </div>
 
         <div class="back-to-main">
