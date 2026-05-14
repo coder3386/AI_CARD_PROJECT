@@ -22,6 +22,8 @@ public class UsersMemberService {
                 .loginId(dto.getLoginid()) // DTO의 username을 login_id로 저장
                 .password(passwordEncoder.encode(dto.getPassword())) // 암호화 필수!
                 .name(dto.getName())
+                .email(dto.getEmail())
+                .phone(dto.getPhone())
                 .role("USER")
                 .build();
         return memberRepository.save(member).getId();

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/error_style.css}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
-
+</head>
 
 <body>
 <div class="bg-circle" style="width: 400px; height: 400px; top: -100px; left: -100px;"></div>
@@ -15,9 +15,7 @@
 <div class="error-card">
     <div class="error-code " th:text="${error.error_code}">000</div>
     <div class="error-msg" th:text="${error.error_title}">Error_title</div>
-    <div class="error-sub" th:text="${error.error_message}">
-        Error_description
-    </div>
+    <div class="error-sub" th:text="${error.error_message}">Error_description</div>
     <a th:href="@{/}" class="btn-home">홈으로 돌아가기</a>
 </div>
 </body>

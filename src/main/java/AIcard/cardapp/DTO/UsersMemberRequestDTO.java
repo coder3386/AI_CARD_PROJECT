@@ -11,4 +11,6 @@ public class UsersMemberRequestDTO {
     private String loginid;
     private String password;
     private String name;
+    private String email;
+    private String phone;
 }
