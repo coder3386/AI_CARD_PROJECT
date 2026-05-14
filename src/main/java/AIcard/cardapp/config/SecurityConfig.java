@@ -19,7 +19,7 @@ public class SecurityConfig {
 
     // 2. HTTP 보안 설정 (핵심)
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) {
         http
                 // A. CSRF 보호 비활성화
                 // 개발 단계에서는 POST 요청(회원가입 등)이 차단되지 않도록 일단 꺼둡니다.
@@ -28,6 +28,7 @@ public class SecurityConfig {
                 // B. URL별 권한 설정
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/main", "/viewDemo", "/card/join", "/card/login", "/css/**", "/js/**").permitAll() // 누구나 접근 가능
+                        .requestMatchers("/api/contacts/**").permitAll() //API test용
                         .anyRequest().authenticated() // 그 외 모든 요청은 로그인해야함
                 )
 
