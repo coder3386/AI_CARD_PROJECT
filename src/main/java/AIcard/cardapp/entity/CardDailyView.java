@@ -27,7 +27,7 @@ public class CardDailyView {
     @Column(name = "stat_id")
     private Long statId;
 
-    @Column(name = "card_id")
+    @Column(name = "card_id", nullable = false)
     private Long cardId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -35,7 +35,7 @@ public class CardDailyView {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private BusinessCard businessCard;
 
-    @Column(name = "stat_date")
+    @Column(name = "stat_date", nullable = false)
     private LocalDate statDate;
 
     @Column(name = "view_count")

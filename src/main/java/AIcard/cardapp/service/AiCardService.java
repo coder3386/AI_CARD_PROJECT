@@ -2,15 +2,18 @@ package AIcard.cardapp.service;
 
 import AIcard.cardapp.DTO.AiCardResponse;
 import AIcard.cardapp.DTO.CardCreateRequest;
+import AIcard.cardapp.DTO.CardDrawingCreateRequest;
 import AIcard.cardapp.DTO.CardExtraItemRequest;
 import AIcard.cardapp.DTO.CardUpdateTextRequest;
 import AIcard.cardapp.entity.BusinessCard;
+import AIcard.cardapp.entity.BusinessCardDetail;
 import AIcard.cardapp.entity.CardAiResult;
 import AIcard.cardapp.entity.CardDailyView;
 import AIcard.cardapp.entity.CardLayout;
 import AIcard.cardapp.entity.CardLink;
 import AIcard.cardapp.entity.Template;
 import AIcard.cardapp.repository.BusinessCardRepository;
+import AIcard.cardapp.repository.BusinessCardDetailRepository;
 import AIcard.cardapp.repository.CardAiResultRepository;
 import AIcard.cardapp.repository.CardDailyViewRepository;
 import AIcard.cardapp.repository.CardLayoutRepository;
@@ -30,6 +33,7 @@ public class AiCardService {
     private static final Long TEST_USER_ID = 1L;
 
     private final BusinessCardRepository businessCardRepository;
+    private final BusinessCardDetailRepository businessCardDetailRepository;
     private final TemplateRepository templateRepository;
     private final CardAiResultRepository cardAiResultRepository;
     private final CardLayoutRepository cardLayoutRepository;
@@ -43,6 +47,7 @@ public class AiCardService {
 
     public AiCardService(
             BusinessCardRepository businessCardRepository,
+            BusinessCardDetailRepository businessCardDetailRepository,
             TemplateRepository templateRepository,
             CardAiResultRepository cardAiResultRepository,
             CardLayoutRepository cardLayoutRepository,
@@ -52,6 +57,7 @@ public class AiCardService {
             HtmlExportService htmlExportService
     ) {
         this.businessCardRepository = businessCardRepository;
+        this.businessCardDetailRepository = businessCardDetailRepository;
         this.templateRepository = templateRepository;
         this.cardAiResultRepository = cardAiResultRepository;
         this.cardLayoutRepository = cardLayoutRepository;
@@ -64,15 +70,20 @@ public class AiCardService {
     @Transactional
     public Long generate(CardCreateRequest request) {
         List<Template> templates = templateRepository.findByActiveTrue();
-        Template selectedTemplate = templates.isEmpty() ? null : templates.getFirst();
+        if (templates.isEmpty()) {
+            throw new IllegalStateException("사용 가능한 명함 템플릿이 없습니다.");
+        }
+        Template selectedTemplate = templates.getFirst();
 
         BusinessCard card = new BusinessCard();
         card.setUserId(TEST_USER_ID);
-        card.setTemplateId(selectedTemplate == null ? null : selectedTemplate.getTemplateId());
+        card.setTemplateId(selectedTemplate.getTemplateId());
         card.setTitle(defaultText(request.getDisplayName(), "AI 명함"));
-        applyCreateRequest(card, request);
+        card.setDisplayName(request.getDisplayName());
         card.setPublicUrl(makePublicUrl());
         card = businessCardRepository.save(card);
+        BusinessCardDetail detail = saveDetail(card.getCardId(), request);
+        card.setDetail(detail);
         saveExtraItems(card.getCardId(), request.getExtraItems());
 
         AiCardResponse aiResponse = openAiCardService.generateCardDraft(card, templates, request);
@@ -98,24 +109,47 @@ public class AiCardService {
     }
 
     @Transactional
+    public Long generateDrawing(CardDrawingCreateRequest request) {
+        CardCreateRequest cardRequest = new CardCreateRequest();
+        cardRequest.setApiKey(request.getApiKey());
+        cardRequest.setDrawingDescription(request.getDrawingDescription());
+        cardRequest.setDrawingLayoutJson(request.getDrawingLayoutJson());
+        cardRequest.setDisplayName(defaultValue(request.getDisplayName(), "그림 기반 명함"));
+        cardRequest.setJobTitle(request.getJobTitle());
+        cardRequest.setCompany(request.getCompany());
+        cardRequest.setDepartment(request.getDepartment());
+        cardRequest.setIntro(request.getIntro());
+        cardRequest.setEmail(request.getEmail());
+        cardRequest.setPhone(request.getPhone());
+        cardRequest.setExtraItems(request.getExtraItems());
+        cardRequest.setMood("그림 또는 스케치 배치를 바탕으로 한 시각적인 명함");
+        cardRequest.setPreferredColor("사용자 그림 설명에 어울리는 색상");
+        return generate(cardRequest);
+    }
+
+    @Transactional
     public void updateText(Long cardId, CardUpdateTextRequest request) {
         BusinessCard card = getCard(cardId);
         card.setDisplayName(request.getDisplayName());
-        card.setJobTitle(request.getJobTitle());
-        card.setCompany(request.getCompany());
-        card.setDepartment(request.getDepartment());
-        card.setIntro(request.getIntro());
-        card.setEmail(request.getEmail());
-        card.setPhone(request.getPhone());
         businessCardRepository.save(card);
+        saveDetail(cardId, request);
         saveExtraItems(cardId, request.getExtraItems());
         htmlExportService.exportCard(cardId);
     }
 
+    @Transactional
+    public void deleteCard(Long cardId) {
+        BusinessCard card = getCard(cardId);
+        htmlExportService.deleteExportedCardDirectory(cardId);
+        businessCardRepository.delete(card);
+    }
+
     @Transactional(readOnly = true)
     public BusinessCard getCard(Long cardId) {
-        return businessCardRepository.findById(cardId)
+        BusinessCard card = businessCardRepository.findById(cardId)
                 .orElseThrow(() -> new IllegalArgumentException("명함을 찾을 수 없습니다. cardId=" + cardId));
+        businessCardDetailRepository.findById(cardId).ifPresent(card::setDetail);
+        return card;
     }
 
     @Transactional
@@ -132,6 +166,7 @@ public class AiCardService {
     public String readPublicCard(String publicUrl) {
         BusinessCard card = businessCardRepository.findByPublicUrl(publicUrl)
                 .orElseThrow(() -> new IllegalArgumentException("공개 명함을 찾을 수 없습니다."));
+        businessCardDetailRepository.findById(card.getCardId()).ifPresent(card::setDetail);
 
         if (!"ACTIVE".equals(card.getStatus()) || !Boolean.TRUE.equals(card.getPublicCard())) {
             throw new IllegalStateException("공개되지 않은 명함입니다.");
@@ -161,14 +196,30 @@ public class AiCardService {
         return exported;
     }
 
-    private void applyCreateRequest(BusinessCard card, CardCreateRequest request) {
-        card.setDisplayName(request.getDisplayName());
-        card.setJobTitle(request.getJobTitle());
-        card.setCompany(request.getCompany());
-        card.setDepartment(request.getDepartment());
-        card.setIntro(request.getIntro());
-        card.setEmail(request.getEmail());
-        card.setPhone(request.getPhone());
+    private BusinessCardDetail saveDetail(Long cardId, CardCreateRequest request) {
+        BusinessCardDetail detail = businessCardDetailRepository.findById(cardId)
+                .orElseGet(BusinessCardDetail::new);
+        detail.setCardId(cardId);
+        detail.setJobTitle(request.getJobTitle());
+        detail.setCompany(request.getCompany());
+        detail.setDepartment(request.getDepartment());
+        detail.setIntro(request.getIntro());
+        detail.setEmail(request.getEmail());
+        detail.setPhone(request.getPhone());
+        return businessCardDetailRepository.save(detail);
+    }
+
+    private BusinessCardDetail saveDetail(Long cardId, CardUpdateTextRequest request) {
+        BusinessCardDetail detail = businessCardDetailRepository.findById(cardId)
+                .orElseGet(BusinessCardDetail::new);
+        detail.setCardId(cardId);
+        detail.setJobTitle(request.getJobTitle());
+        detail.setCompany(request.getCompany());
+        detail.setDepartment(request.getDepartment());
+        detail.setIntro(request.getIntro());
+        detail.setEmail(request.getEmail());
+        detail.setPhone(request.getPhone());
+        return businessCardDetailRepository.save(detail);
     }
 
     private void saveExtraItems(Long cardId, List<CardExtraItemRequest> extraItems) {
@@ -188,8 +239,6 @@ public class AiCardService {
             item.setItemType(defaultType(itemRequest.getItemType()));
             item.setTitle(trimToNull(itemRequest.getTitle()));
             item.setUrl(trimToNull(itemRequest.getUrl()));
-            item.setDescription(trimToNull(itemRequest.getDescription()));
-            item.setImageUrl(trimToNull(itemRequest.getImageUrl()));
             item.setSortOrder(sortOrder++);
             cardLinkRepository.save(item);
         }
@@ -197,9 +246,7 @@ public class AiCardService {
 
     private boolean isBlankExtraItem(CardExtraItemRequest item) {
         return trimToNull(item.getTitle()) == null
-                && trimToNull(item.getUrl()) == null
-                && trimToNull(item.getDescription()) == null
-                && trimToNull(item.getImageUrl()) == null;
+                && trimToNull(item.getUrl()) == null;
     }
 
     private String defaultType(String itemType) {
@@ -224,5 +271,9 @@ public class AiCardService {
 
     private String defaultText(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value + " 명함";
+    }
+
+    private String defaultValue(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 }

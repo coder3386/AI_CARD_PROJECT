@@ -3,8 +3,11 @@ package AIcard.cardapp.DTO;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CardCreateRequest {
+public class CardDrawingCreateRequest {
 
+    private String apiKey;
+    private String drawingDescription;
+    private String drawingLayoutJson;
     private String displayName;
     private String jobTitle;
     private String company;
@@ -12,12 +15,31 @@ public class CardCreateRequest {
     private String intro;
     private String email;
     private String phone;
-    private String mood;
-    private String preferredColor;
-    private String apiKey;
-    private String drawingDescription;
-    private String drawingLayoutJson;
     private List<CardExtraItemRequest> extraItems = new ArrayList<>();
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+    }
+
+    public String getDrawingDescription() {
+        return drawingDescription;
+    }
+
+    public void setDrawingDescription(String drawingDescription) {
+        this.drawingDescription = drawingDescription;
+    }
+
+    public String getDrawingLayoutJson() {
+        return drawingLayoutJson;
+    }
+
+    public void setDrawingLayoutJson(String drawingLayoutJson) {
+        this.drawingLayoutJson = drawingLayoutJson;
+    }
 
     public String getDisplayName() {
         return displayName;
@@ -75,51 +97,11 @@ public class CardCreateRequest {
         this.phone = phone;
     }
 
-    public String getMood() {
-        return mood;
-    }
-
-    public void setMood(String mood) {
-        this.mood = mood;
-    }
-
-    public String getPreferredColor() {
-        return preferredColor;
-    }
-
-    public void setPreferredColor(String preferredColor) {
-        this.preferredColor = preferredColor;
-    }
-
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
-    }
-
-    public String getDrawingLayoutJson() {
-        return drawingLayoutJson;
-    }
-
-    public String getDrawingDescription() {
-        return drawingDescription;
-    }
-
-    public void setDrawingDescription(String drawingDescription) {
-        this.drawingDescription = drawingDescription;
-    }
-
-    public void setDrawingLayoutJson(String drawingLayoutJson) {
-        this.drawingLayoutJson = drawingLayoutJson;
-    }
-
     public List<CardExtraItemRequest> getExtraItems() {
         return extraItems;
     }
 
     public void setExtraItems(List<CardExtraItemRequest> extraItems) {
-        this.extraItems = extraItems == null ? new ArrayList<>() : extraItems;
+        this.extraItems = extraItems;
     }
 }

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>그림을 통한 명함 제작</title>
+    <link rel="stylesheet" th:href="@{/css/ai-card.css}">
+    <link rel="stylesheet" th:href="@{/css/drawing-card.css}">
+</head>
+<body class="ai-card-page">
+<button class="ai-home-button" type="button" data-main-home th:data-home-url="@{/}">메인화면으로 가기</button>
+
+<main class="ai-card-shell">
+    <section class="ai-card-form-panel">
+        <div class="ai-card-header">
+            <p class="ai-card-kicker">AI Digital Business Card</p>
+            <h1>그림을 통한 명함 제작</h1>
+            <p class="ai-card-description">스케치나 원하는 그림 구성을 직접 그리거나 글로 설명하면 AI가 명함 초안을 만듭니다.</p>
+        </div>
+
+        <p class="ai-error-message" th:if="${errorMessage}" th:text="${errorMessage}"></p>
+
+        <form class="ai-card-form" th:action="@{/cards/drawing/generate}" th:object="${cardDrawingCreateRequest}" method="post">
+            <input type="hidden" name="apiKey" id="apiKeyField">
+            <input type="hidden" name="drawingLayoutJson" id="drawingLayoutJson">
+
+            <section class="drawing-card-section">
+                <div class="drawing-card-heading">
+                    <div>
+                        <h2>명함 배치 그리기</h2>
+                        <p>도형을 추가한 뒤 역할을 지정하고, 명함 안에서 원하는 위치와 크기로 배치해보세요.</p>
+                    </div>
+                    <button type="button" class="drawing-clear-button" id="clearDrawingCanvasButton">전체 초기화</button>
+                </div>
+
+                <div class="drawing-toolbar">
+                    <button type="button" id="addDrawingShapeButton">도형 추가</button>
+                    <label>
+                        선택 도형 역할
+                        <select id="shapeRoleSelect">
+                            <option value="">자동 추정</option>
+                            <option value="profileImage">profileImage</option>
+                            <option value="nameText">nameText</option>
+                            <option value="jobText">jobText</option>
+                            <option value="introText">introText</option>
+                            <option value="emailText">emailText</option>
+                            <option value="phoneText">phoneText</option>
+                            <option value="portfolioArea">portfolioArea</option>
+                            <option value="linkArea">linkArea</option>
+                            <option value="decoration">decoration</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="drawing-shape-status" id="drawingShapeStatus">
+                    <strong>추가한 요소</strong>
+                    <div class="drawing-shape-chips" id="drawingShapeChips">
+                        <span class="drawing-empty-chip">아직 추가한 도형이 없습니다.</span>
+                    </div>
+                </div>
+
+                <div class="drawing-validation-message" id="drawingValidationMessage" aria-live="polite"></div>
+
+                <div class="drawing-card-canvas-wrap">
+                    <div id="drawingCanvas" class="drawing-card-canvas" aria-label="명함 배치 그림판"></div>
+                </div>
+            </section>
+
+            <label>
+                그림 설명
+                <textarea th:field="*{drawingDescription}" rows="6" placeholder="예: 왼쪽에는 프로필 사진, 오른쪽에는 연락처와 기술 태그가 보이는 어두운 명함"></textarea>
+            </label>
+
+            <div class="ai-card-grid">
+                <label>
+                    이름
+                    <input type="text" th:field="*{displayName}" placeholder="홍길동">
+                </label>
+                <label>
+                    직무 / 직책
+                    <input type="text" th:field="*{jobTitle}" placeholder="프론트엔드 개발자">
+                </label>
+                <label>
+                    회사 / 소속
+                    <input type="text" th:field="*{company}" placeholder="AI Card Lab">
+                </label>
+                <label>
+                    부서 / 전공
+                    <input type="text" th:field="*{department}" placeholder="컴퓨터공학과">
+                </label>
+            </div>
+
+            <label>
+                자기소개
+                <textarea th:field="*{intro}" rows="3" placeholder="명함에 들어갈 짧은 소개"></textarea>
+            </label>
+
+            <div class="ai-card-grid">
+                <label>
+                    이메일
+                    <input type="email" th:field="*{email}" placeholder="test@example.com">
+                </label>
+                <label>
+                    전화번호
+                    <input type="text" th:field="*{phone}" placeholder="010-1234-5678">
+                </label>
+            </div>
+
+            <section class="drawing-extra-section" id="drawingExtraSection">
+                <div class="drawing-extra-heading">
+                    <strong>추가 정보</strong>
+                    <span>배치판에 포트폴리오 또는 링크 영역을 추가하면 입력칸이 자동으로 생깁니다.</span>
+                </div>
+                <div class="drawing-extra-list" id="drawingExtraList">
+                    <p class="drawing-extra-empty">아직 추가 정보 영역이 없습니다.</p>
+                </div>
+            </section>
+
+            <button class="ai-card-primary-button" type="submit">GPT 생성</button>
+        </form>
+    </section>
+</main>
+<script th:src="@{/js/card-type-select.js}"></script>
+<script th:src="@{/js/drawing-card.js}"></script>
+</body>
+</html>

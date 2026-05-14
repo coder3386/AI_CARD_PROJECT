@@ -7,6 +7,8 @@
     <link rel="stylesheet" th:href="@{/css/ai-card.css}">
 </head>
 <body class="ai-card-page">
+<button class="ai-home-button" type="button" data-main-home th:data-home-url="@{/}">메인화면으로 가기</button>
+
 <main class="ai-preview-shell">
     <section class="ai-preview-stage">
         <div class="ai-preview-toolbar">
@@ -26,6 +28,8 @@
         </div>
 
         <form class="ai-card-form" th:action="@{/cards/{cardId}/update-text(cardId=${card.cardId})}" method="post">
+            <input type="hidden" name="apiKey" id="apiKeyField">
+
             <div class="ai-form-section-title">기본정보</div>
             <label>
                 이름
@@ -63,7 +67,6 @@
                     <button type="button" data-extra-add="CERTIFICATE">자격증 추가</button>
                     <button type="button" data-extra-add="PORTFOLIO">포트폴리오 추가</button>
                     <button type="button" data-extra-add="LINK">링크 추가</button>
-                    <button type="button" data-extra-add="PHOTO">사진 URL 추가</button>
                 </div>
 
                 <div class="ai-extra-list" data-extra-list>
@@ -81,22 +84,22 @@
                             링크
                             <input data-extra-field="url" th:name="|extraItems[${iter.index}].url|" th:value="${item.url}" placeholder="https://example.com">
                         </label>
-                        <label>
-                            설명
-                            <textarea data-extra-field="description" th:name="|extraItems[${iter.index}].description|" rows="2" th:text="${item.description}" placeholder="간단한 설명"></textarea>
-                        </label>
-                        <label>
-                            사진 URL
-                            <input data-extra-field="imageUrl" th:name="|extraItems[${iter.index}].imageUrl|" th:value="${item.imageUrl}" placeholder="https://example.com/photo.jpg">
-                        </label>
                     </div>
                 </div>
             </details>
 
             <button class="ai-card-primary-button" type="submit">저장 후 HTML 재생성</button>
         </form>
+
+        <form class="ai-card-delete-form"
+              th:action="@{/cards/{cardId}/delete(cardId=${card.cardId})}"
+              method="post"
+              onsubmit="return confirm('이 명함을 완전히 삭제하시겠습니까? 삭제 후에는 복구할 수 없습니다.');">
+            <button class="ai-card-danger-button" type="submit">명함 삭제</button>
+        </form>
     </aside>
 </main>
+<script th:src="@{/js/card-type-select.js}"></script>
 <script th:src="@{/js/ai-card-preview.js}"></script>
 </body>
 </html>

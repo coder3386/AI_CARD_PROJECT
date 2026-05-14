@@ -2,6 +2,7 @@ package AIcard.cardapp.service;
 
 import AIcard.cardapp.DTO.AiCardResponse;
 import AIcard.cardapp.DTO.CardCreateRequest;
+import AIcard.cardapp.DTO.CardExtraItemRequest;
 import AIcard.cardapp.entity.BusinessCard;
 import AIcard.cardapp.entity.Template;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,7 +34,7 @@ public class OpenAiCardService {
     private final RestClient restClient;
 
     @Value("${openai.api.key:}")
-    private String apiKey;
+    private String configuredApiKey;
 
     @Value("${openai.model:gpt-5.4-mini}")
     private String model;
@@ -46,24 +47,31 @@ public class OpenAiCardService {
     }
 
     public AiCardResponse generateCardDraft(BusinessCard card, List<Template> templates, CardCreateRequest request) {
+        return generateCardDraft(card, templates, request, request.getApiKey());
+    }
+
+    public AiCardResponse generateCardDraft(
+            BusinessCard card,
+            List<Template> templates,
+            CardCreateRequest request,
+            String userProvidedApiKey
+    ) {
         String prompt = buildPrompt(card, templates, request);
-        if (apiKey == null || apiKey.isBlank() || apiKey.contains("${OPENAI_API_KEY}")) {
-            return fallback(card, prompt, "OPENAI_API_KEY가 없어 기본 명함을 생성했습니다.");
-        }
+        String apiKeyToUse = resolveApiKey(userProvidedApiKey);
 
         try {
             Map<String, Object> body = Map.of(
                     "model", model,
                     "response_format", Map.of("type", "json_object"),
                     "messages", List.of(
-                            Map.of("role", "system", "content", "너는 안전한 HTML/CSS 기반 디지털 명함 디자이너다. 응답은 반드시 JSON 객체 하나만 반환한다."),
+                            Map.of("role", "system", "content", "You are a safe HTML/CSS digital business card designer. Return only one JSON object."),
                             Map.of("role", "user", "content", prompt)
                     )
             );
 
             String apiResult = restClient.post()
                     .uri("/v1/chat/completions")
-                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Authorization", "Bearer " + apiKeyToUse)
                     .header("Content-Type", "application/json")
                     .body(body)
                     .retrieve()
@@ -71,19 +79,28 @@ public class OpenAiCardService {
 
             return parseResponse(apiResult, prompt, card);
         } catch (Exception ex) {
-            return fallback(card, prompt, "GPT API 호출 실패로 기본 명함을 생성했습니다. " + ex.getMessage());
+            return fallback(card, prompt, "GPT API 호출 실패로 기본 명함을 생성했습니다.");
         }
+    }
+
+    private String resolveApiKey(String userProvidedApiKey) {
+        if (userProvidedApiKey != null && !userProvidedApiKey.isBlank()) {
+            return userProvidedApiKey.trim();
+        }
+        if (configuredApiKey != null && !configuredApiKey.isBlank() && !configuredApiKey.contains("${OPENAI_API_KEY}")) {
+            return configuredApiKey.trim();
+        }
+        throw new IllegalStateException("API 키가 설정되지 않았습니다.");
     }
 
     private AiCardResponse parseResponse(String apiResult, String prompt, BusinessCard card) throws Exception {
         JsonNode root = objectMapper.readTree(apiResult);
         String content = root.at("/choices/0/message/content").asText();
         if (content == null || content.isBlank()) {
-            return fallback(card, prompt, "GPT 응답에서 content를 찾지 못해 기본 명함을 생성했습니다.");
+            return fallback(card, prompt, "GPT 응답 파싱 실패로 기본 명함을 생성했습니다.");
         }
 
-        String cleaned = stripJsonFence(content);
-        JsonNode cardJson = objectMapper.readTree(cleaned);
+        JsonNode cardJson = objectMapper.readTree(stripJsonFence(content));
         String html = text(cardJson, "html");
         String css = text(cardJson, "css");
         String reason = text(cardJson, "reason");
@@ -93,7 +110,7 @@ public class OpenAiCardService {
                 : objectMapper.writeValueAsString(layoutNode);
 
         if (!isSafeAndComplete(html, css)) {
-            return fallback(card, prompt, "GPT 응답의 필수 ID가 누락되었거나 사용할 수 없는 태그가 있어 기본 명함을 생성했습니다.");
+            return fallback(card, prompt, "GPT 응답에 필수 ID가 누락되어 기본 명함을 생성했습니다.");
         }
 
         AiCardResponse response = new AiCardResponse();
@@ -122,25 +139,31 @@ public class OpenAiCardService {
         }
 
         return """
-                사용자의 명함 정보를 바탕으로 860px x 480px 디지털 명함 HTML/CSS 초안을 만들어라.
+                Create a 860px x 480px digital business card draft using HTML and CSS.
 
-                사용자 정보:
-                - 이름: %s
-                - 직무/직책: %s
-                - 회사/소속: %s
-                - 부서/전공: %s
-                - 자기소개: %s
-                - 이메일: %s
-                - 전화번호: %s
-                - 원하는 분위기: %s
-                - 선호 색상: %s
-
-                참고 가능한 템플릿:
+                User information:
+                - Name: %s
+                - Job title: %s
+                - Company: %s
+                - Department or major: %s
+                - Intro: %s
+                - Email: %s
+                - Phone: %s
+                - Drawing description: %s
+                - Desired mood: %s
+                - Preferred color: %s
+                - Drawing layout JSON:
                 %s
 
-                반드시 아래 JSON 형식만 반환한다.
+                Extra portfolio, skill, certificate, and link items:
+                %s
+
+                Available templates:
+                %s
+
+                Return only this JSON format:
                 {
-                  "reason": "추천 이유",
+                  "reason": "recommendation reason",
                   "html": "<div id='cardRoot'>...</div>",
                   "css": "#cardRoot { ... }",
                   "layoutJson": {
@@ -160,16 +183,28 @@ public class OpenAiCardService {
                   }
                 }
 
-                HTML 규칙:
-                - html, head, body 태그를 만들지 않는다.
-                - script 태그, iframe 태그, 외부 CDN을 사용하지 않는다.
-                - class 이름은 card- 로 시작한다.
-                - 수정 가능한 주요 요소에는 editable 클래스를 붙인다.
-                - 전체 카드 크기는 860px x 480px 기준이다.
-                - headlineText는 만들지 않는다.
-                - 대표 문구가 필요하면 introText 안에 자연스럽게 포함한다.
-                - 아래 ID는 반드시 포함한다: cardRoot, nameText, jobText, introText, emailText, phoneText, profileImage, portfolioArea, linkArea
-                - 가능하면 companyText, departmentText ID도 포함한다.
+                HTML rules:
+                - Do not create html, head, or body tags.
+                - Do not use script tags, iframe tags, or external CDN.
+                - Class names must start with card-.
+                - Add editable class to major editable text elements.
+                - Required IDs: cardRoot, nameText, jobText, introText, emailText, phoneText, profileImage, portfolioArea, linkArea.
+                - Do not create headlineText.
+                - If possible, include companyText and departmentText IDs too.
+                - Use the exact Name value for nameText. Do not add words such as "card", "business card", or "명함" after the name.
+                - Use only the user's provided job title, company, department, intro, email, and phone values. Do not invent missing personal details.
+                - Drawing description is only design guidance. Do not copy it into introText unless the same content was also provided as Intro.
+                - Always reserve a future extra-info area for portfolioArea near the lower-right or lower-middle area, even when Extra items is "- none".
+                - Do not place nameText, jobText, introText, emailText, phoneText, companyText, departmentText, or decorations over the reserved portfolioArea space.
+                - portfolioArea must only include items listed in Extra portfolio, skill, certificate, and link items. If Extra items is "- none", keep the area visually available as an empty extra section.
+                - linkArea must stay empty unless drawingLayout explicitly places it. The server will render LINK items together inside portfolioArea.
+                - Do not place portfolioArea or linkArea at the top-left corner unless drawingLayout explicitly places them there.
+                - Prefer portfolioArea near the lower-right or lower-middle area, with about 360px x 112px of usable space.
+                - Do not invent placeholder links such as GitHub, Blog, Portfolio, or SNS.
+                - Keep every visual element inside cardRoot. Do not let text overflow outside the 860px x 480px card.
+                - If drawingLayoutJson is provided, keep the user's specified elements as close to their x, y, width, and height as possible.
+                - If the user drew only some required elements, automatically place missing required elements in the remaining space.
+                - Even if drawingLayoutJson is empty, generate a complete card using the text description and default layout.
                 """.formatted(
                 safe(card.getDisplayName()),
                 safe(card.getJobTitle()),
@@ -178,10 +213,46 @@ public class OpenAiCardService {
                 safe(card.getIntro()),
                 safe(card.getEmail()),
                 safe(card.getPhone()),
+                safe(request.getDrawingDescription()),
                 safe(request.getMood()),
                 safe(request.getPreferredColor()),
+                safeLayout(request.getDrawingLayoutJson()),
+                buildExtraInfo(request.getExtraItems()),
                 templateInfo
         );
+    }
+
+    private String safeLayout(String drawingLayoutJson) {
+        if (drawingLayoutJson == null || drawingLayoutJson.isBlank()) {
+            return "- none";
+        }
+        return drawingLayoutJson;
+    }
+
+    private String buildExtraInfo(List<CardExtraItemRequest> extraItems) {
+        if (extraItems == null || extraItems.isEmpty()) {
+            return "- none";
+        }
+
+        StringBuilder builder = new StringBuilder();
+        for (CardExtraItemRequest item : extraItems) {
+            if (item == null) {
+                continue;
+            }
+            String title = safe(item.getTitle());
+            String url = safe(item.getUrl());
+            if (title.isBlank() && url.isBlank()) {
+                continue;
+            }
+            builder.append("- type=")
+                    .append(safe(item.getItemType()))
+                    .append(", title=")
+                    .append(title)
+                    .append(", url=")
+                    .append(url)
+                    .append('\n');
+        }
+        return builder.isEmpty() ? "- none" : builder.toString();
     }
 
     private AiCardResponse fallback(BusinessCard card, String prompt, String reason) {

@@ -47,10 +47,10 @@ public class Template {
     @Column(name = "recommended_jobs", columnDefinition = "text")
     private String recommendedJobs;
 
-    @Column(name = "html_path", length = 500, nullable = false)
+    @Column(name = "html_path", length = 255, nullable = false)
     private String htmlPath;
 
-    @Column(name = "css_path", length = 500, nullable = false)
+    @Column(name = "css_path", length = 255, nullable = false)
     private String cssPath;
 
     @Column(name = "is_active")

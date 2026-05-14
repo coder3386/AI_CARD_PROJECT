@@ -7,8 +7,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -34,12 +34,15 @@ public class BusinessCard {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
-    @Column(name = "template_id")
+    @Column(name = "template_id", nullable = false)
     private Long templateId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "template_id", insertable = false, updatable = false)
+    @JoinColumn(name = "template_id", insertable = false, updatable = false, nullable = false)
     private Template template;
+
+    @OneToOne(fetch = FetchType.LAZY, mappedBy = "businessCard")
+    private BusinessCardDetail detail;
 
     @Column(name = "title", length = 100)
     private String title;
@@ -47,32 +50,13 @@ public class BusinessCard {
     @Column(name = "display_name", length = 50)
     private String displayName;
 
-    @Column(name = "job_title", length = 100)
-    private String jobTitle;
-
-    @Column(name = "company", length = 100)
-    private String company;
-
-    @Column(name = "department", length = 100)
-    private String department;
-
-    @Lob
-    @Column(name = "intro", columnDefinition = "text")
-    private String intro;
-
-    @Column(name = "email", length = 100)
-    private String email;
-
-    @Column(name = "phone", length = 30)
-    private String phone;
-
     @Column(name = "public_url", length = 255, unique = true)
     private String publicUrl;
 
-    @Column(name = "output_path", length = 500)
+    @Column(name = "output_path", length = 255)
     private String outputPath;
 
-    @Column(name = "output_html", length = 500)
+    @Column(name = "output_html", length = 255)
     private String outputHtml;
 
     @Column(name = "is_public")
@@ -141,6 +125,14 @@ public class BusinessCard {
         this.templateId = templateId;
     }
 
+    public BusinessCardDetail getDetail() {
+        return detail;
+    }
+
+    public void setDetail(BusinessCardDetail detail) {
+        this.detail = detail;
+    }
+
     public String getTitle() {
         return title;
     }
@@ -155,54 +147,6 @@ public class BusinessCard {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
-    }
-
-    public String getJobTitle() {
-        return jobTitle;
-    }
-
-    public void setJobTitle(String jobTitle) {
-        this.jobTitle = jobTitle;
-    }
-
-    public String getCompany() {
-        return company;
-    }
-
-    public void setCompany(String company) {
-        this.company = company;
-    }
-
-    public String getDepartment() {
-        return department;
-    }
-
-    public void setDepartment(String department) {
-        this.department = department;
-    }
-
-    public String getIntro() {
-        return intro;
-    }
-
-    public void setIntro(String intro) {
-        this.intro = intro;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
     }
 
     public String getPublicUrl() {
@@ -275,5 +219,29 @@ public class BusinessCard {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getJobTitle() {
+        return detail == null ? null : detail.getJobTitle();
+    }
+
+    public String getCompany() {
+        return detail == null ? null : detail.getCompany();
+    }
+
+    public String getDepartment() {
+        return detail == null ? null : detail.getDepartment();
+    }
+
+    public String getEmail() {
+        return detail == null ? null : detail.getEmail();
+    }
+
+    public String getPhone() {
+        return detail == null ? null : detail.getPhone();
+    }
+
+    public String getIntro() {
+        return detail == null ? null : detail.getIntro();
     }
 }

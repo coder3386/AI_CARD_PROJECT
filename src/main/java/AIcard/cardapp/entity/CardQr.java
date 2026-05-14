@@ -25,7 +25,7 @@ public class CardQr {
     @Column(name = "qr_id")
     private Long qrId;
 
-    @Column(name = "card_id")
+    @Column(name = "card_id", nullable = false, unique = true)
     private Long cardId;
 
     @OneToOne(fetch = FetchType.LAZY)
@@ -33,10 +33,10 @@ public class CardQr {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private BusinessCard businessCard;
 
-    @Column(name = "qr_image_url", length = 500)
+    @Column(name = "qr_image_url", length = 255)
     private String qrImageUrl;
 
-    @Column(name = "target_url", length = 500)
+    @Column(name = "target_url", length = 255)
     private String targetUrl;
 
     @Column(name = "created_at")

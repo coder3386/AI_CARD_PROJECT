@@ -11,6 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -25,7 +26,7 @@ public class CardLink {
     @Column(name = "link_id")
     private Long linkId;
 
-    @Column(name = "card_id")
+    @Column(name = "card_id", nullable = false)
     private Long cardId;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -33,19 +34,19 @@ public class CardLink {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private BusinessCard businessCard;
 
-    @Column(name = "item_type", length = 30)
+    @Column(name = "link_type", length = 30)
     private String itemType;
 
-    @Column(name = "title", length = 150)
+    @Column(name = "label", length = 50)
     private String title;
 
     @Column(name = "url", length = 500)
     private String url;
 
-    @Column(name = "description", length = 500)
+    @Transient
     private String description;
 
-    @Column(name = "image_url", length = 500)
+    @Transient
     private String imageUrl;
 
     @Column(name = "sort_order")
