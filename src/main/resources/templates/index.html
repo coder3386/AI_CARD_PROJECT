@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <title>AI Card Main Page</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" th:href="@{/css/main_style.css}">
+    <link rel="stylesheet" th:href="@{/css/menu_style.css}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -12,16 +14,48 @@
 
 <header class="navbar">
     <div class="container">
-        <a href="/card/" class="logo">ALCARD<span>.</span></a>
+        <a href="/card/" class="logo">AICARD<span>.</span></a>
         <nav class="nav-menu">
             <a href="#features">기능</a>
             <a href="#about">서비스 소개</a>
             <a href="#contact">문의하기</a>
         </nav>
         <div class="nav-auth">
-            <a th:href="@{/card/login}" class="btn-primary">로그인</a>
-            <a th:href="@{/card/join}" class="btn-primary">회원가입</a>
+            <div sec:authorize="isAnonymous()">
+                <a th:href="@{/card/login}" class="btn-primary">로그인</a>
+                <a th:href="@{/card/join}" class="btn-primary">회원가입</a>
+            </div>
+            <div sec:authorize="isAuthenticated()" class="profile-menu-container">
+                <button id="profileBtn" class="profile-btn">
+                    <span class="profile-icon">👤</span></button>
+
+                <div id="profileDropdown" class="dropdown-content">
+                    <div class="dropdown-header">
+                        <div class="user-greeting">안녕하세요</div>
+                        <div class="user-name" th:if="${loginUser != null}"><span
+                                th:text="${loginUser.name}">이름</span>님
+                        </div>
+                        <div class="user-name" th:if="${loginUser == null}">
+                            <span>게스트</span>님
+                        </div>
+                    </div>
+
+                    <hr class="dropdown-divider">
+
+                    <a th:href="@{/card/edit}" class="dropdown-item">계정 관리</a>
+                    <a th:href="@{/card/settings}" class="dropdown-item">임시텍스트 - 추가 가능</a>
+
+                    <hr class="dropdown-divider">
+
+                    <form th:action="@{/card/logout}" method="post" class="dropdown-item logout-form">
+                        <button type="submit" class="logout-btn-in-menu">
+                            로그아웃
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
+
     </div>
 </header>
 
@@ -86,11 +120,18 @@
             </div>
         </div>
         <div class="footer-bottom">
+            <div class="footer-inside">
+                <a href="#">회사소개</a>
+                <a th:href="@{terms}">이용약관</a>
+                <a th:href="@{privacypolicy}">개인정보처리방침</a>
+            </div>
+            <br>
             <p>&copy; 2026 Alcard Inc. All rights reserved.</p>
         </div>
     </div>
 </footer>
 
 <script>lucide.createIcons();</script>
+<script th:src="@{/js/menu.js}"></script>
 </body>
 </html>

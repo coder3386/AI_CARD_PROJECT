@@ -113,6 +113,14 @@ a {
     font-size: 1.1rem;
 }
 
+.btn-setting {
+    background: var(--primary-color);
+    color: #FFFBEB;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
 /* --- Hero Section --- */
 .hero {
     padding: 100px 0;
@@ -238,6 +246,17 @@ a {
     color: var(--text-sub);
     margin-bottom: 10px;
     font-size: 0.9rem;
+}
+
+.footer-inside a:not(:last-child)::after {
+    content: "|"; /* 항목 뒤에 세로선 추가 */
+    margin: 0 10px; /* 세로선 양옆에 여백 */
+    color: #ccc; /* 선 색상을 연하게 */
+}
+
+.footer-inside a:hover {
+    color: #000; /* 마우스 올렸을 때 색상 변경 */
+    text-decoration: underline;
 }
 
 .footer-bottom {

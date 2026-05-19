@@ -114,3 +114,52 @@
 .back-to-main a:hover {
     color: var(--primary-color);
 }
+
+/* 기본 에러 메시지 스타일 (평소엔 숨김) */
+.error-text {
+    color: #ff4d4d; /* 예쁜 빨간색 */
+    font-size: 12px;
+    font-weight: normal;
+    margin-left: 8px;
+    display: none; /* 핵심: 평소엔 안 보이게 숨김 */
+}
+
+/* JS에서 이 클래스를 붙여주면 짠! 하고 나타납니다 */
+.error-text.show {
+    display: inline-block;
+}
+
+/* (선택사항) 에러가 났을 때 입력창 테두리도 빨갛게 만들고 싶다면 */
+input.input-error {
+    border: 1px solid #ff4d4d !important;
+    background-color: #fffafb; /* 배경도 살짝 붉게 */
+}
+
+/* 약관 동의 영역 스타일 */
+.terms-group {
+    margin-top: 15px;
+    margin-bottom: 25px;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center; /* 체크박스와 텍스트 높이 맞춤 */
+    gap: 8px; /* 체크박스와 글자 사이 간격 */
+    font-weight: normal;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* 텍스트 입력창과 달리 체크박스는 원래 크기를 유지하도록 설정 */
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    margin: 0;
+}
+
+.checkbox-label a {
+    color: #7A5C43; /* 기존 테마에 맞춘 브라운/노란색 계열 강조 */
+    text-decoration: underline;
+    font-weight: bold;
+}

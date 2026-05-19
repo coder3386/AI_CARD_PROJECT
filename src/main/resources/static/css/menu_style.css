@@ -1,0 +1,100 @@
+/* 프로필 컨테이너 (드롭다운의 기준점) */
+.profile-menu-container {
+    position: relative;
+    display: inline-block;
+}
+
+/* 프로필 버튼 (동그라미) - 부드러운 상아색/베이지 */
+.profile-btn {
+    background-color: #F7E7CE;
+    color: #5C4330; /* 아이콘을 갈색 톤으로 */
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    font-size: 20px;
+    box-shadow: 0 2px 4px rgba(92, 67, 48, 0.1); /* 그림자도 살짝 갈색 빛이 돌게 */
+}
+
+/* 프로필 버튼 호버 시 - 조금 더 진한 따뜻한 베이지 */
+.profile-btn:hover {
+    background-color: #EDD4B5;
+}
+
+/* 드롭다운 박스 (평소에는 안 보임) - 포근한 크림색 배경 */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 50px;
+    background-color: #FFFDF9;
+    min-width: 280px;
+    box-shadow: 0px 4px 12px rgba(100, 75, 50, 0.12); /* 부드러운 갈색 톤 그림자 */
+    border-radius: 20px;
+    z-index: 1000;
+    padding: 15px 0;
+}
+
+/* JS로 'show' 클래스가 붙으면 보이게 됨 */
+.dropdown-content.show {
+    display: block;
+}
+
+/* 박스 안의 텍스트 디자인 - 전체적으로 차분한 갈색(모카) 톤 적용 */
+.dropdown-header {
+    padding: 10px 20px;
+    text-align: center;
+    color: #7A5C43;
+}
+
+.user-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 5px;
+    color: #4A3320; /* 이름은 조금 더 진하고 또렷한 갈색으로 강조 */
+}
+
+/* 구분선 - 연하고 따뜻한 베이지 선 */
+.dropdown-divider {
+    border: none;
+    border-top: 1px solid #EBE1D5;
+    margin: 10px 0;
+}
+
+/* 메뉴 항목들 */
+.dropdown-item {
+    display: block;
+    padding: 12px 20px;
+    color: #634A38;
+    text-decoration: none;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+/* 메뉴 항목에 마우스를 올렸을 때 - 연한 밀크티 색상 */
+.dropdown-item:hover {
+    background-color: #F7EFE5;
+    color: #4A3320;
+}
+
+/* 로그아웃 버튼 디자인 맞추기 */
+.logout-form {
+    padding: 0;
+    margin: 0;
+}
+
+.logout-btn-in-menu {
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 12px 20px;
+    font-size: 14px;
+    color: #634A38;
+    cursor: pointer;
+}
+
+.logout-btn-in-menu:hover {
+    background-color: #F7EFE5;
+}
