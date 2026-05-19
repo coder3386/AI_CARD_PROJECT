@@ -32,12 +32,17 @@
                 <div id="profileDropdown" class="dropdown-content">
                     <div class="dropdown-header">
                         <div class="user-greeting">안녕하세요</div>
-                        <div class="user-name"><span sec:authentication="name"></span>님</div>
+                        <div class="user-name" th:if="${loginUser != null}"><span
+                                th:text="${loginUser.name}">이름</span>님
+                        </div>
+                        <div class="user-name" th:if="${loginUser == null}">
+                            <span>게스트</span>님
+                        </div>
                     </div>
 
                     <hr class="dropdown-divider">
 
-                    <a th:href="@{/card/manage}" class="dropdown-item">계정 관리</a>
+                    <a th:href="@{/card/edit}" class="dropdown-item">계정 관리</a>
                     <a th:href="@{/card/settings}" class="dropdown-item">임시텍스트 - 추가 가능</a>
 
                     <hr class="dropdown-divider">

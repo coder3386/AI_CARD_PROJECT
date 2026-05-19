@@ -42,6 +42,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/main", "/viewDemo").permitAll() // 누구나 접근 가능
                         .requestMatchers("/terms", "/privacypolicy").permitAll()
                         .requestMatchers("/card/join", "/card/login").permitAll()
+                        .requestMatchers("/card/edit").authenticated()
                         //.requestMatchers("manager/").hasRole("MANAGER")
                         .anyRequest().permitAll() // 그 외 모든 요청은 로그인해야함
                 )
