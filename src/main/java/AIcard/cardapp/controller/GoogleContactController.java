@@ -15,19 +15,29 @@ public class GoogleContactController {
 
     /**
      * 사용자의 명함 정보를 구글 주소록에 저장하는 엔드포인트
+     * @param bearerToken 프론트엔드 요청 헤더(Authorization)에 실려오는 구글 Access Token
      * @param contactDto 프론트엔드에서 보낸 명함 데이터 (이름, 번호 등)
      * @return 성공 시 성공 메시지 반환
      */
-    @PostMapping("/save")
-    public ResponseEntity<String> saveToGoogleContacts(@RequestBody GoogleContactDTO contactDto) {
+    @PostMapping("/sync")
+    public ResponseEntity<String> saveToGoogleContacts(
+            @RequestHeader("Authorization") String bearerToken,
+            @RequestBody GoogleContactDTO contactDto) {
         try {
-            // 1. 서비스에게 주소록 저장 업무를 맡김
-            googleContactService.saveContact(contactDto);
+            // 1. 헤더에 실려온 토큰에서 "Bearer " 접두사 제거 및 정제
+            if (bearerToken == null || bearerToken.isEmpty()) {
+                return ResponseEntity.badRequest().body("구글 인증 토큰이 존재하지 않습니다.");
+            }
+            String accessTokenStr = bearerToken.replace("Bearer ", "").trim();
 
-            // 2. 처리가 잘 끝났다면 성공 메시지를 사용자에게 전달
+            // 2. 서비스에게 토큰과 DTO 데이터를 함께 맡김
+            googleContactService.saveContact(accessTokenStr, contactDto);
+
+            // 3. 처리가 잘 끝났다면 성공 메시지를 사용자에게 전달
             return ResponseEntity.ok("구글 주소록에 명함이 성공적으로 저장되었습니다!");
         } catch (Exception e) {
-            // 3. 문제가 생겼다면 에러 메시지 전달
+            e.printStackTrace();
+            // 4. 문제가 생겼다면 에러 메시지 전달
             return ResponseEntity.internalServerError().body("저장 중 오류 발생: " + e.getMessage());
         }
     }
