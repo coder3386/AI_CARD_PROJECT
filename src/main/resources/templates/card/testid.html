@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>테스트 명함 상세페이지</title>
+    <link rel="stylesheet" th:href="@{/cards/testid.css}">
+</head>
+<body>
+
+<div class="business-card">
+
+    <div class="card-header">
+        <div class="profile-img">
+            <span class="avatar-placeholder">👤</span>
+        </div>
+        <div class="header-text">
+            <h2 class="name">홍길동 (테스트 계정)</h2>
+            <p class="position">백엔드 개발자</p>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="info-item">
+            <span class="icon">📧</span>
+            <p><strong>이메일:</strong> testid@example.com</p>
+        </div>
+        <div class="info-item">
+            <span class="icon">📱</span>
+            <p><strong>연락처:</strong> 010-1234-5678</p>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <a th:href="@{/api/cards/download(cardId=1)}" class="btn-download">
+            📥 오프라인 파일 다운로드 (.html)
+        </a>
+    </div>
+</div>
+
+</body>
+</html>

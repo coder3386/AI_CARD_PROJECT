@@ -19,4 +19,10 @@ public class UserController {
         //return "user/signup";
 
     }
+
+    @GetMapping("/card/testid")
+    public String viewTestCard() {
+        // src/main/resources/templates/card/testid.html 파일을 찾아 띄워줍니다.
+        return "card/testid";
+    }
 }
