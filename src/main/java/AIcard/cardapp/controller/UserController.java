@@ -17,6 +17,10 @@ public class UserController {
     public String signup() {
         return "임시: 에러페이지로 ㄱ"; //이렇게 하면 http 500 응답
         //return "user/signup";
+    }
 
+    @GetMapping("/googleOauth")
+    public String googleOauthPage() {
+        return "googleOauth";
     }
 }
