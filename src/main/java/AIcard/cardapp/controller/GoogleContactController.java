@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+@CrossOrigin(origins = "*") // 프론트엔드가 리액트/웹 환경일 때 포트 불일치로 인한 차단(CORS) 방지
 @RestController // REST API 요청을 받는 클래스임을 선언
 @RequestMapping("/api/contacts") // 이 주소로 들어오는 요청을 처리
 @RequiredArgsConstructor // 생성자를 통해 서비스를 자동으로 주입받음
@@ -21,14 +22,18 @@ public class GoogleContactController {
      */
     @PostMapping("/sync")
     public ResponseEntity<String> saveToGoogleContacts(
-            @RequestHeader("Authorization") String bearerToken,
+            @RequestHeader(value = "Authorization", required = false) String bearerToken,
             @RequestBody GoogleContactDTO contactDto) {
         try {
-            // 1. 헤더에 실려온 토큰에서 "Bearer " 접두사 제거 및 정제
+            // 1. 헤더에 실려온 토큰 검증 및 정제
             if (bearerToken == null || bearerToken.isEmpty()) {
-                return ResponseEntity.badRequest().body("구글 인증 토큰이 존재하지 않습니다.");
+                return ResponseEntity.badRequest().body("구글 인증 토큰(Authorization Header)이 존재하지 않습니다.");
             }
-            String accessTokenStr = bearerToken.replace("Bearer ", "").trim();
+
+            String accessTokenStr = bearerToken;
+            if (bearerToken.startsWith("Bearer ")) {
+                accessTokenStr = bearerToken.substring(7).trim();
+            }
 
             // 2. 서비스에게 토큰과 DTO 데이터를 함께 맡김
             googleContactService.saveContact(accessTokenStr, contactDto);
