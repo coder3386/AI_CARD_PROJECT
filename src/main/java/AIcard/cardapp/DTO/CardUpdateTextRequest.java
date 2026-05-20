@@ -13,6 +13,7 @@ public class CardUpdateTextRequest {
     private String email;
     private String phone;
     private String apiKey;
+    private String geminiApiKey;
     private List<CardExtraItemRequest> extraItems = new ArrayList<>();
 
     public String getDisplayName() {
@@ -77,6 +78,14 @@ public class CardUpdateTextRequest {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public String getGeminiApiKey() {
+        return geminiApiKey;
+    }
+
+    public void setGeminiApiKey(String geminiApiKey) {
+        this.geminiApiKey = geminiApiKey;
     }
 
     public List<CardExtraItemRequest> getExtraItems() {

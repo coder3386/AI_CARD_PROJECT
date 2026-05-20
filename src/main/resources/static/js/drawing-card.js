@@ -3,16 +3,22 @@
     const canvasHeight = 480;
     const minShapeWidth = 60;
     const minShapeHeight = 36;
+    const maxExtraItems = 8;
     const roleLabels = {
-        profileImage: "프로필",
+        "": "자동 추정",
+        profileImage: "프로필 사진",
         nameText: "이름",
-        jobText: "직무",
-        introText: "소개",
+        jobText: "직무 / 직책",
+        introText: "자기소개",
         emailText: "이메일",
-        phoneText: "전화",
-        portfolioArea: "포트폴리오",
-        linkArea: "링크",
-        decoration: "장식"
+        phoneText: "전화번호",
+        portfolioArea: "포트폴리오"
+    };
+    const extraTypeLabels = {
+        SKILL: "기술",
+        CERTIFICATE: "자격증",
+        PORTFOLIO: "포트폴리오",
+        LINK: "깃허브 / 링크"
     };
     const personalRoleFields = [
         { role: "nameText", label: "이름", selector: "[name='displayName']" },
@@ -21,7 +27,7 @@
         { role: "emailText", label: "이메일", selector: "[name='email']" },
         { role: "phoneText", label: "전화번호", selector: "[name='phone']" }
     ];
-    const extraRoles = ["portfolioArea", "linkArea"];
+    const extraRoles = ["portfolioArea"];
     const palette = [
         { border: "#0f766e", background: "rgba(20, 184, 166, 0.16)" },
         { border: "#2563eb", background: "rgba(96, 165, 250, 0.16)" },
@@ -79,6 +85,10 @@
                     event.preventDefault();
                 }
             });
+        }
+        if (extraList) {
+            extraList.addEventListener("click", handleExtraListClick);
+            extraList.addEventListener("change", handleExtraImageChange);
         }
 
         canvas.addEventListener("click", function () {
@@ -361,69 +371,149 @@
         }
 
         const existingValues = collectExtraValues();
-        const extraShapes = Array.from(canvas.querySelectorAll(".drawing-shape"))
-            .filter((shape) => extraRoles.includes(getShapeRole(shape)));
 
-        extraList.innerHTML = "";
-
-        if (extraShapes.length === 0) {
+        if (!hasPortfolioArea()) {
+            extraList.innerHTML = "";
             const empty = document.createElement("p");
             empty.className = "drawing-extra-empty";
-            empty.textContent = "아직 추가 정보 영역이 없습니다.";
+            empty.textContent = "배치판에 포트폴리오 영역을 추가하면 입력칸이 표시됩니다.";
             extraList.appendChild(empty);
             return;
         }
 
-        extraShapes.forEach((shape, index) => {
-            const role = getShapeRole(shape);
-            const shapeId = shape.dataset.shapeId;
-            const previous = existingValues[shapeId] || {};
-            const type = role === "linkArea" ? "LINK" : "PORTFOLIO";
-            const title = previous.title || "";
-
-            extraList.appendChild(buildExtraItemFieldset(index, shapeId, type, title, previous));
-        });
+        renderExtraPanel(existingValues.length > 0 ? existingValues : [{ itemType: "SKILL", title: "", url: "" }]);
     }
 
-    function buildExtraItemFieldset(index, shapeId, itemType, title, previous) {
+    function hasPortfolioArea() {
+        if (!canvas) {
+            return false;
+        }
+        return Array.from(canvas.querySelectorAll(".drawing-shape"))
+            .some((shape) => extraRoles.includes(getShapeRole(shape)));
+    }
+
+    function renderExtraPanel(values) {
+        extraList.innerHTML = "";
+        extraList.appendChild(buildExtraActions());
+
+        const rows = document.createElement("div");
+        rows.className = "drawing-extra-items";
+        rows.dataset.extraRows = "true";
+
+        values.slice(0, maxExtraItems).forEach((value, index) => {
+            rows.appendChild(buildExtraItemFieldset(index, value.itemType || "SKILL", value.title || "", value.url || "", value.imageUrl || ""));
+        });
+
+        extraList.appendChild(rows);
+    }
+
+    function buildExtraActions() {
+        const actions = document.createElement("div");
+        actions.className = "drawing-extra-actions";
+        Object.entries(extraTypeLabels).forEach(([type, label]) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.dataset.drawingExtraAdd = type;
+            button.textContent = `${label} 추가`;
+            actions.appendChild(button);
+        });
+        return actions;
+    }
+
+    function buildExtraItemFieldset(index, itemType, title, url, imageUrl) {
         const fieldset = document.createElement("div");
         fieldset.className = "drawing-extra-item";
-        fieldset.dataset.shapeId = shapeId;
+        fieldset.dataset.extraRow = "true";
 
         fieldset.innerHTML = `
             <input type="hidden" name="extraItems[${index}].itemType" value="${escapeAttr(itemType)}">
+            <input type="hidden" name="extraItems[${index}].imageUrl" value="${escapeAttr(imageUrl || "")}">
             <div class="drawing-extra-item-title">
-                <strong>${itemType === "LINK" ? "링크 정보" : "포트폴리오 정보"}</strong>
-                <span>${shapeId}</span>
+                <strong>${escapeHtml(extraTypeLabels[itemType] || "포트폴리오")}</strong>
+                <button type="button" data-drawing-extra-remove>삭제</button>
             </div>
             <label>
                 제목
-                <input type="text" name="extraItems[${index}].title" value="${escapeAttr(title)}" placeholder="예: GitHub, 자격증, 프로젝트">
+                <input type="text" name="extraItems[${index}].title" value="${escapeAttr(title)}" placeholder="예: Java, 정보처리기사, GitHub, 프로젝트명">
             </label>
             <label>
-                링크 URL
-                <input type="url" name="extraItems[${index}].url" value="${escapeAttr(previous.url || "")}" placeholder="https://example.com">
+                주소
+                <input type="url" name="extraItems[${index}].url" value="${escapeAttr(url)}" placeholder="https://example.com">
             </label>
+            ${itemType === "PORTFOLIO" ? `
+            <label class="drawing-extra-image-field">
+                사진
+                <input type="file" data-drawing-extra-image-input accept="image/*">
+            </label>
+            ` : ""}
         `;
 
         return fieldset;
     }
 
     function collectExtraValues() {
-        const values = {};
+        const values = [];
         if (!extraList) {
             return values;
         }
 
         extraList.querySelectorAll(".drawing-extra-item").forEach((item) => {
-            const shapeId = item.dataset.shapeId;
-            values[shapeId] = {
+            values.push({
+                itemType: getFieldValue(item, "[name$='.itemType']") || "SKILL",
                 title: getFieldValue(item, "[name$='.title']"),
-                url: getFieldValue(item, "[name$='.url']")
-            };
+                url: getFieldValue(item, "[name$='.url']"),
+                imageUrl: getFieldValue(item, "[name$='.imageUrl']")
+            });
         });
 
         return values;
+    }
+
+    function handleExtraListClick(event) {
+        const addButton = event.target.closest("[data-drawing-extra-add]");
+        if (addButton) {
+            const values = collectExtraValues();
+            if (values.length >= maxExtraItems) {
+                alert(`포트폴리오는 최대 ${maxExtraItems}개까지만 추가할 수 있습니다.`);
+                return;
+            }
+            values.push({ itemType: addButton.dataset.drawingExtraAdd, title: "", url: "" });
+            renderExtraPanel(values);
+            return;
+        }
+
+        const removeButton = event.target.closest("[data-drawing-extra-remove]");
+        if (removeButton) {
+            const row = removeButton.closest(".drawing-extra-item");
+            if (row) {
+                row.remove();
+                renumberExtraFields();
+            }
+        }
+    }
+
+    async function handleExtraImageChange(event) {
+        const input = event.target.closest("[data-drawing-extra-image-input]");
+        if (!input) {
+            return;
+        }
+        const row = input.closest(".drawing-extra-item");
+        const imageField = row ? row.querySelector("[name$='.imageUrl']") : null;
+        if (!imageField) {
+            return;
+        }
+        imageField.value = await readImageFile(input.files && input.files[0]);
+    }
+
+    function renumberExtraFields() {
+        if (!extraList) {
+            return;
+        }
+        extraList.querySelectorAll(".drawing-extra-item").forEach((item, index) => {
+            item.querySelectorAll("[name]").forEach((field) => {
+                field.name = field.name.replace(/extraItems\[\d+]/, `extraItems[${index}]`);
+            });
+        });
     }
 
     function validatePlacedPersonalFields(showMessage) {
@@ -492,9 +582,20 @@
         if (text.includes("소개") || text.includes("intro")) return "introText";
         if (text.includes("메일") || text.includes("email")) return "emailText";
         if (text.includes("전화") || text.includes("phone")) return "phoneText";
-        if (text.includes("포트폴리오") || text.includes("기술") || text.includes("portfolio") || text.includes("skill")) return "portfolioArea";
-        if (text.includes("링크") || text.includes("github") || text.includes("blog") || text.includes("link")) return "linkArea";
-        return "decoration";
+        if (
+            text.includes("포트폴리오") ||
+            text.includes("기술") ||
+            text.includes("자격증") ||
+            text.includes("링크") ||
+            text.includes("깃허브") ||
+            text.includes("블로그") ||
+            text.includes("portfolio") ||
+            text.includes("skill") ||
+            text.includes("github") ||
+            text.includes("blog") ||
+            text.includes("link")
+        ) return "portfolioArea";
+        return "";
     }
 
     function setDrawingLayoutToHiddenInput() {
@@ -528,6 +629,37 @@
     function getFieldValue(root, selector) {
         const field = root.querySelector(selector);
         return field ? field.value : "";
+    }
+
+    function readImageFile(file) {
+        return new Promise((resolve) => {
+            if (!file || !file.type.startsWith("image/")) {
+                resolve("");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function () {
+                const image = new Image();
+                image.onload = function () {
+                    const maxSize = 900;
+                    const scale = Math.min(1, maxSize / Math.max(image.width, image.height));
+                    const imageCanvas = document.createElement("canvas");
+                    imageCanvas.width = Math.max(1, Math.round(image.width * scale));
+                    imageCanvas.height = Math.max(1, Math.round(image.height * scale));
+                    imageCanvas.getContext("2d").drawImage(image, 0, 0, imageCanvas.width, imageCanvas.height);
+                    resolve(imageCanvas.toDataURL("image/jpeg", 0.78));
+                };
+                image.onerror = function () {
+                    resolve("");
+                };
+                image.src = reader.result;
+            };
+            reader.onerror = function () {
+                resolve("");
+            };
+            reader.readAsDataURL(file);
+        });
     }
 
     function escapeHtml(value) {

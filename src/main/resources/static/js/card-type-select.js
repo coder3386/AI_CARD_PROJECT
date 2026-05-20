@@ -1,7 +1,11 @@
 (function () {
     const storageKey = "AICARD_OPENAI_API_KEY";
+    const geminiStorageKey = "AICARD_GEMINI_API_KEY";
     const apiKeyInput = document.getElementById("personalApiKeyInput");
+    const geminiApiKeyInput = document.getElementById("personalGeminiApiKeyInput");
     const apiKeyField = document.getElementById("apiKeyField");
+    const geminiApiKeyField = document.getElementById("geminiApiKeyField");
+    const apiKeySelectError = document.getElementById("apiKeySelectError");
     const textCardButton = document.getElementById("textCardButton");
     const drawingCardButton = document.getElementById("drawingCardButton");
     const loadingMessageByAction = [
@@ -11,21 +15,45 @@
         { keyword: "/delete", message: "명함을 삭제중입니다..." }
     ];
 
-    function saveApiKeyFromInput() {
-        if (!apiKeyInput) {
-            return;
-        }
-
-        const value = apiKeyInput.value || "";
+    function saveOneKey(input, key) {
+        const value = input ? input.value || "" : "";
         if (value.trim()) {
-            sessionStorage.setItem(storageKey, value);
+            sessionStorage.setItem(key, value);
         } else {
-            sessionStorage.removeItem(storageKey);
+            sessionStorage.removeItem(key);
+        }
+    }
+
+    function saveApiKeysFromInput() {
+        saveOneKey(apiKeyInput, storageKey);
+        saveOneKey(geminiApiKeyInput, geminiStorageKey);
+    }
+
+    function hasRequiredApiKeys() {
+        const openAiKey = apiKeyInput ? apiKeyInput.value : sessionStorage.getItem(storageKey);
+        const geminiKey = geminiApiKeyInput ? geminiApiKeyInput.value : sessionStorage.getItem(geminiStorageKey);
+        return Boolean((openAiKey && openAiKey.trim()) || (geminiKey && geminiKey.trim()));
+    }
+
+    function showApiKeyError() {
+        if (apiKeySelectError) {
+            apiKeySelectError.hidden = false;
+        }
+        window.alert("GPT API Key 또는 Gemini API Key 중 하나는 입력해야 합니다.");
+    }
+
+    function hideApiKeyErrorIfReady() {
+        if (apiKeySelectError && hasRequiredApiKeys()) {
+            apiKeySelectError.hidden = true;
         }
     }
 
     function moveTo(button) {
-        saveApiKeyFromInput();
+        saveApiKeysFromInput();
+        if (!hasRequiredApiKeys()) {
+            showApiKeyError();
+            return;
+        }
         const targetUrl = button.dataset.targetUrl;
         if (targetUrl) {
             location.href = targetUrl;
@@ -33,24 +61,33 @@
     }
 
     function fillHiddenApiKey() {
-        if (!apiKeyField) {
-            return;
-        }
-
         const savedKey = sessionStorage.getItem(storageKey);
-        if (savedKey) {
+        const savedGeminiKey = sessionStorage.getItem(geminiStorageKey);
+        if (apiKeyField && savedKey) {
             apiKeyField.value = savedKey;
+        }
+        if (geminiApiKeyField && savedGeminiKey) {
+            geminiApiKeyField.value = savedGeminiKey;
         }
     }
 
     function clearApiKeyAndGoHome(button) {
         sessionStorage.removeItem(storageKey);
+        sessionStorage.removeItem(geminiStorageKey);
         location.href = button.dataset.homeUrl || "/";
     }
 
     function initSubmitGuard() {
         document.querySelectorAll("form").forEach((form) => {
             form.addEventListener("submit", function (event) {
+                fillHiddenApiKey();
+                if (isGenerateForm(form) && !hasHiddenRequiredApiKeys()) {
+                    event.preventDefault();
+                    form.dataset.submitting = "false";
+                    showApiKeyError();
+                    return;
+                }
+
                 if (form.dataset.submitting === "true") {
                     event.preventDefault();
                     return;
@@ -73,6 +110,18 @@
                 }, 0);
             });
         });
+    }
+
+    function isGenerateForm(form) {
+        const action = form.getAttribute("action") || "";
+        return action.includes("/cards/generate") || action.includes("/cards/drawing/generate");
+    }
+
+    function hasHiddenRequiredApiKeys() {
+        return Boolean(
+            (apiKeyField && apiKeyField.value && apiKeyField.value.trim())
+            || (geminiApiKeyField && geminiApiKeyField.value && geminiApiKeyField.value.trim())
+        );
     }
 
     function getLoadingMessage(form) {
@@ -116,6 +165,15 @@
         if (savedKey) {
             apiKeyInput.value = savedKey;
         }
+        apiKeyInput.addEventListener("input", hideApiKeyErrorIfReady);
+    }
+
+    if (geminiApiKeyInput) {
+        const savedGeminiKey = sessionStorage.getItem(geminiStorageKey);
+        if (savedGeminiKey) {
+            geminiApiKeyInput.value = savedGeminiKey;
+        }
+        geminiApiKeyInput.addEventListener("input", hideApiKeyErrorIfReady);
     }
 
     if (textCardButton) {

@@ -12,7 +12,7 @@
 <main class="ai-preview-shell">
     <section class="ai-preview-stage">
         <div class="ai-preview-toolbar">
-            <a class="ai-card-secondary-button" th:href="@{/cards/new}">새 명함</a>
+            <a class="ai-card-secondary-button" th:href="@{/cards/select-type}">새 명함</a>
             <a class="ai-card-secondary-button" th:href="@{/public/card/{publicUrl}(publicUrl=${card.publicUrl})}" target="_blank">공개 페이지</a>
         </div>
         <div class="ai-preview-frame-wrap">
@@ -29,6 +29,7 @@
 
         <form class="ai-card-form" th:action="@{/cards/{cardId}/update-text(cardId=${card.cardId})}" method="post">
             <input type="hidden" name="apiKey" id="apiKeyField">
+            <input type="hidden" name="geminiApiKey" id="geminiApiKeyField">
 
             <div class="ai-form-section-title">기본정보</div>
             <label>
@@ -61,7 +62,7 @@
             </label>
 
             <details class="ai-extra-panel">
-                <summary>기타</summary>
+                <summary>포트폴리오</summary>
                 <div class="ai-extra-actions">
                     <button type="button" data-extra-add="SKILL">기술 추가</button>
                     <button type="button" data-extra-add="CERTIFICATE">자격증 추가</button>
@@ -84,11 +85,21 @@
                             링크
                             <input data-extra-field="url" th:name="|extraItems[${iter.index}].url|" th:value="${item.url}" placeholder="https://example.com">
                         </label>
+                        <input type="hidden" data-extra-field="imageUrl" th:name="|extraItems[${iter.index}].imageUrl|" th:value="${item.imageUrl}">
+                        <label class="ai-extra-image-field" th:if="${item.itemType == 'PORTFOLIO'}">
+                            사진
+                            <input type="file" data-extra-image-input accept="image/*">
+                        </label>
                     </div>
                 </div>
             </details>
 
             <button class="ai-card-primary-button" type="submit">저장 후 HTML 재생성</button>
+            <button class="ai-card-secondary-button"
+                    type="submit"
+                    th:formaction="@{/cards/{cardId}/fix-layout(cardId=${card.cardId})}">
+                겹침/짤림 AI 정리
+            </button>
         </form>
 
         <form class="ai-card-delete-form"

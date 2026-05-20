@@ -46,7 +46,7 @@ public class CardLink {
     @Transient
     private String description;
 
-    @Transient
+    @Column(name = "image_url", columnDefinition = "longtext")
     private String imageUrl;
 
     @Column(name = "sort_order")

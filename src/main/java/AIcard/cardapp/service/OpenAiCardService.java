@@ -31,7 +31,8 @@ public class OpenAiCardService {
     );
 
     private final ObjectMapper objectMapper;
-    private final RestClient restClient;
+    private final RestClient openAiRestClient;
+    private final RestClient geminiRestClient;
 
     @Value("${openai.api.key:}")
     private String configuredApiKey;
@@ -39,15 +40,24 @@ public class OpenAiCardService {
     @Value("${openai.model:gpt-5.4-mini}")
     private String model;
 
+    @Value("${gemini.api.key:}")
+    private String configuredGeminiApiKey;
+
+    @Value("${gemini.model:gemini-2.5-flash}")
+    private String geminiModel;
+
     public OpenAiCardService() {
         this.objectMapper = new ObjectMapper();
-        this.restClient = RestClient.builder()
+        this.openAiRestClient = RestClient.builder()
                 .baseUrl("https://api.openai.com")
+                .build();
+        this.geminiRestClient = RestClient.builder()
+                .baseUrl("https://generativelanguage.googleapis.com")
                 .build();
     }
 
     public AiCardResponse generateCardDraft(BusinessCard card, List<Template> templates, CardCreateRequest request) {
-        return generateCardDraft(card, templates, request, request.getApiKey());
+        return generateCardDraft(card, templates, request, request.getApiKey(), request.getGeminiApiKey());
     }
 
     public AiCardResponse generateCardDraft(
@@ -56,8 +66,59 @@ public class OpenAiCardService {
             CardCreateRequest request,
             String userProvidedApiKey
     ) {
+        return generateCardDraft(card, templates, request, userProvidedApiKey, null);
+    }
+
+    public AiCardResponse generateCardDraft(
+            BusinessCard card,
+            List<Template> templates,
+            CardCreateRequest request,
+            String userProvidedApiKey,
+            String userProvidedGeminiApiKey
+    ) {
         String prompt = buildPrompt(card, templates, request);
-        String apiKeyToUse = resolveApiKey(userProvidedApiKey);
+        return callCardModel(card, prompt, userProvidedApiKey, userProvidedGeminiApiKey);
+    }
+
+    public AiCardResponse fixLayoutOnly(
+            BusinessCard card,
+            String currentHtml,
+            String currentCss,
+            String userProvidedApiKey,
+            String userProvidedGeminiApiKey
+    ) {
+        String prompt = buildLayoutFixPrompt(card, currentHtml, currentCss);
+        return callCardModel(card, prompt, userProvidedApiKey, userProvidedGeminiApiKey);
+    }
+
+    private AiCardResponse callCardModel(
+            BusinessCard card,
+            String prompt,
+            String userProvidedApiKey,
+            String userProvidedGeminiApiKey
+    ) {
+        String userOpenAiApiKey = trimToNull(userProvidedApiKey);
+        String userGeminiApiKey = trimToNull(userProvidedGeminiApiKey);
+        String openAiApiKey = userOpenAiApiKey != null
+                ? userOpenAiApiKey
+                : userGeminiApiKey == null ? resolveConfiguredApiKeyOrNull(configuredApiKey, "${OPENAI_API_KEY}") : null;
+        String geminiApiKey = userGeminiApiKey != null
+                ? userGeminiApiKey
+                : resolveConfiguredApiKeyOrNull(configuredGeminiApiKey, "${GEMINI_API_KEY}");
+
+        if (openAiApiKey == null && geminiApiKey != null) {
+            try {
+                return callGemini(card, prompt, geminiApiKey);
+            } catch (Exception ex) {
+                return fallback(card, prompt, "Gemini API 호출 실패로 기본 명함을 생성했습니다.");
+            }
+        }
+
+        if (openAiApiKey == null) {
+            throw new IllegalStateException("GPT API Key 또는 Gemini API Key 중 하나는 입력해야 합니다.");
+        }
+
+        String apiKeyToUse = openAiApiKey;
 
         try {
             Map<String, Object> body = Map.of(
@@ -69,7 +130,7 @@ public class OpenAiCardService {
                     )
             );
 
-            String apiResult = restClient.post()
+            String apiResult = openAiRestClient.post()
                     .uri("/v1/chat/completions")
                     .header("Authorization", "Bearer " + apiKeyToUse)
                     .header("Content-Type", "application/json")
@@ -79,18 +140,61 @@ public class OpenAiCardService {
 
             return parseResponse(apiResult, prompt, card);
         } catch (Exception ex) {
+            if (geminiApiKey != null) {
+                try {
+                    return callGemini(card, prompt, geminiApiKey);
+                } catch (Exception ignored) {
+                    return fallback(card, prompt, "GPT와 Gemini API 호출 실패로 기본 명함을 생성했습니다.");
+                }
+            }
             return fallback(card, prompt, "GPT API 호출 실패로 기본 명함을 생성했습니다.");
         }
     }
 
-    private String resolveApiKey(String userProvidedApiKey) {
-        if (userProvidedApiKey != null && !userProvidedApiKey.isBlank()) {
-            return userProvidedApiKey.trim();
+    private String resolveConfiguredApiKeyOrNull(String configuredKey, String unresolvedPlaceholder) {
+        if (configuredKey != null && !configuredKey.isBlank() && !configuredKey.contains(unresolvedPlaceholder)) {
+            return configuredKey.trim();
         }
-        if (configuredApiKey != null && !configuredApiKey.isBlank() && !configuredApiKey.contains("${OPENAI_API_KEY}")) {
-            return configuredApiKey.trim();
+        return null;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
         }
-        throw new IllegalStateException("API 키가 설정되지 않았습니다.");
+        return value.trim();
+    }
+
+    private AiCardResponse callGemini(BusinessCard card, String prompt, String geminiApiKey) throws Exception {
+        Map<String, Object> body = Map.of(
+                "systemInstruction", Map.of(
+                        "parts", List.of(Map.of("text", "You are a safe HTML/CSS digital business card designer. Return only one JSON object."))
+                ),
+                "contents", List.of(
+                        Map.of("role", "user", "parts", List.of(Map.of("text", prompt)))
+                ),
+                "generationConfig", Map.of(
+                        "responseMimeType", "application/json"
+                )
+        );
+
+        String apiResult = geminiRestClient.post()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1beta/models/{model}:generateContent")
+                        .queryParam("key", geminiApiKey)
+                        .build(geminiModel))
+                .header("Content-Type", "application/json")
+                .body(body)
+                .retrieve()
+                .body(String.class);
+
+        JsonNode root = objectMapper.readTree(apiResult);
+        String content = root.at("/candidates/0/content/parts/0/text").asText();
+        if (content == null || content.isBlank()) {
+            return fallback(card, prompt, "Gemini 응답 파싱 실패로 기본 명함을 생성했습니다.");
+        }
+
+        return parseGeminiResponse(content, apiResult, prompt, card);
     }
 
     private AiCardResponse parseResponse(String apiResult, String prompt, BusinessCard card) throws Exception {
@@ -120,6 +224,33 @@ public class OpenAiCardService {
         response.setLayoutJson(layoutJson);
         response.setRawJson(apiResult);
         response.setPrompt(prompt);
+        response.setModelName(model);
+        response.setFallback(false);
+        return response;
+    }
+
+    private AiCardResponse parseGeminiResponse(String content, String apiResult, String prompt, BusinessCard card) throws Exception {
+        JsonNode cardJson = objectMapper.readTree(stripJsonFence(content));
+        String html = text(cardJson, "html");
+        String css = text(cardJson, "css");
+        String reason = text(cardJson, "reason");
+        JsonNode layoutNode = cardJson.get("layoutJson");
+        String layoutJson = layoutNode == null || layoutNode.isNull()
+                ? defaultLayoutJson()
+                : objectMapper.writeValueAsString(layoutNode);
+
+        if (!isSafeAndComplete(html, css)) {
+            return fallback(card, prompt, "Gemini 응답에 필수 ID가 누락되어 기본 명함을 생성했습니다.");
+        }
+
+        AiCardResponse response = new AiCardResponse();
+        response.setReason(reason);
+        response.setHtml(html);
+        response.setCss(css);
+        response.setLayoutJson(layoutJson);
+        response.setRawJson(apiResult);
+        response.setPrompt(prompt);
+        response.setModelName(geminiModel);
         response.setFallback(false);
         return response;
     }
@@ -137,6 +268,9 @@ public class OpenAiCardService {
                     .append(template.getColorTags())
                     .append('\n');
         }
+        String templateCodes = String.join(", ", templates.stream()
+                .map(Template::getTemplateCode)
+                .toList());
 
         return """
                 Create a 860px x 480px digital business card draft using HTML and CSS.
@@ -161,13 +295,23 @@ public class OpenAiCardService {
                 Available templates:
                 %s
 
+                Template selection rules:
+                - Choose exactly one template_code from Available templates.
+                - Allowed template_code values: %s
+                - Put the chosen template_code into layoutJson.templateCode exactly.
+                - Choose modern_dark for dark, tech, professional, developer, backend, cyber, navy, neon moods.
+                - Choose simple_white for clean, student, academic, minimal, bright, formal, resume-like moods.
+                - Choose portfolio_grid for creative, portfolio, designer, project, skill-heavy, visual-grid moods.
+                - Templates are style references, not rigid layout locks. Keep the selected template's mood, palette, and visual language, but freely adjust placement when the user's text or extra items need more room.
+                - For all templates (modern_dark, simple_white, portfolio_grid), choose the final coordinates by content fit. Never reuse a template's original box coordinates if they make introText, contact, or portfolioArea collide.
+
                 Return only this JSON format:
                 {
                   "reason": "recommendation reason",
                   "html": "<div id='cardRoot'>...</div>",
                   "css": "#cardRoot { ... }",
                   "layoutJson": {
-                    "templateCode": "ai_generated",
+                    "templateCode": "modern_dark",
                     "backgroundColor": "#0F172A",
                     "pointColor": "#38BDF8",
                     "elements": [
@@ -189,20 +333,40 @@ public class OpenAiCardService {
                 - Class names must start with card-.
                 - Add editable class to major editable text elements.
                 - Required IDs: cardRoot, nameText, jobText, introText, emailText, phoneText, profileImage, portfolioArea, linkArea.
+                - layoutJson.templateCode must be one of the allowed template_code values, never ai_generated.
                 - Do not create headlineText.
                 - If possible, include companyText and departmentText IDs too.
                 - Use the exact Name value for nameText. Do not add words such as "card", "business card", or "명함" after the name.
                 - Use only the user's provided job title, company, department, intro, email, and phone values. Do not invent missing personal details.
                 - Drawing description is only design guidance. Do not copy it into introText unless the same content was also provided as Intro.
-                - Always reserve a future extra-info area for portfolioArea near the lower-right or lower-middle area, even when Extra items is "- none".
-                - Do not place nameText, jobText, introText, emailText, phoneText, companyText, departmentText, or decorations over the reserved portfolioArea space.
+                - Always reserve a future extra-info area for portfolioArea in a clean open zone, even when Extra items is "- none".
+                - The server will render portfolioArea inside the position you choose, with up to about 430px x 178px of usable space when items exist. Choose a position that has a full empty rectangle around it.
+                - Do not place nameText, jobText, introText, emailText, phoneText, companyText, departmentText, profileImage, or decorations over the reserved portfolioArea space.
                 - portfolioArea must only include items listed in Extra portfolio, skill, certificate, and link items. If Extra items is "- none", keep the area visually available as an empty extra section.
+                - Do not render skill, certificate, portfolio, or link item titles anywhere outside the element with id portfolioArea.
+                - Do not create standalone skill/tag/chip/badge elements outside portfolioArea.
                 - linkArea must stay empty unless drawingLayout explicitly places it. The server will render LINK items together inside portfolioArea.
                 - Do not place portfolioArea or linkArea at the top-left corner unless drawingLayout explicitly places them there.
-                - Prefer portfolioArea near the lower-right or lower-middle area, with about 360px x 112px of usable space.
+                - portfolioArea can be lower-right, lower-middle, right column, or bottom band depending on which location avoids overlap best.
+                - Give portfolioArea about 430px x 178px of usable space for up to 8 compact items. If the template is too narrow, use a bottom band or a clear side column.
                 - Do not invent placeholder links such as GitHub, Blog, Portfolio, or SNS.
                 - Keep every visual element inside cardRoot. Do not let text overflow outside the 860px x 480px card.
-                - If drawingLayoutJson is provided, keep the user's specified elements as close to their x, y, width, and height as possible.
+                - Before returning, do a layout safety check: no visible text may overlap another element, no text may be clipped, and no important element may leave cardRoot.
+                - Section boxes must never overlap or touch each other. introText box, contact box, profileImage, name/job group, portfolioArea, and decorative panels need at least 18px of clear spacing between their visible borders.
+                - If portfolioArea is near the lower-right, introText and contact details must end before portfolioArea begins, or move to the left/upper area. Do not let introText run underneath portfolioArea.
+                - Do not solve crowding by simply drawing semi-transparent boxes on top of each other. Reflow the layout into separate zones instead.
+                - Treat every rounded rectangle or visible panel as a real box for collision checks. The visible borders of introText panels, contact chips, profileImage, and portfolioArea must have clear gaps.
+                - If intro, email, phone, or extra items are long, reduce font size, widen the text box, wrap text, or move the section. A clean readable layout is more important than copying the template's original coordinates.
+                - Keep introText in a bounded readable block. If the intro is long, use a smaller font and line-height, and place it away from portfolioArea and contact details.
+                - Contact details must remain readable and must not sit under portfolioArea. Move them to the left, upper-right, or a separate compact row if the lower-right is occupied.
+                - Avoid large empty decorative boxes when content is crowded. Use decoration only if it does not reduce readable space.
+                - Use CSS box-sizing: border-box and overflow-wrap: anywhere on long text containers where needed.
+                - Treat drawingLayoutJson as a rough wireframe and user intention, not as exact final coordinates.
+                - Preserve the user's intended regions and relative grouping, but refine x, y, width, and height for a clean professional layout.
+                - If the user's drawing is scattered, cramped, overlapping, or visually messy, snap elements to clean alignment, consistent spacing, and a balanced grid.
+                - Do not draw visible outline boxes for every wireframe shape. Convert rough rectangles into polished sections only when they improve the design.
+                - Group related information naturally: name/job/company/department together, contact details together, intro as one readable area, and extra items inside portfolioArea.
+                - Use safe margins of about 36px to 56px and keep consistent gaps between sections.
                 - If the user drew only some required elements, automatically place missing required elements in the remaining space.
                 - Even if drawingLayoutJson is empty, generate a complete card using the text description and default layout.
                 """.formatted(
@@ -218,7 +382,73 @@ public class OpenAiCardService {
                 safe(request.getPreferredColor()),
                 safeLayout(request.getDrawingLayoutJson()),
                 buildExtraInfo(request.getExtraItems()),
-                templateInfo
+                templateInfo,
+                templateCodes
+        );
+    }
+
+    private String buildLayoutFixPrompt(BusinessCard card, String currentHtml, String currentCss) {
+        return """
+                Fix only layout problems in this existing 860px x 480px digital business card.
+
+                Goal:
+                - Preserve the current visual mood, colors, typography feeling, background, and overall design direction.
+                - Preserve all user text exactly.
+                - Do not add new personal details.
+                - Do not redesign the card from scratch.
+                - Only solve overlap, clipping, overflow, unreadable spacing, or elements escaping cardRoot.
+
+                Required content values:
+                - Name: %s
+                - Job title: %s
+                - Company: %s
+                - Department: %s
+                - Intro: %s
+                - Email: %s
+                - Phone: %s
+
+                Current HTML fragment:
+                %s
+
+                Current CSS:
+                %s
+
+                Return only this JSON format:
+                {
+                  "reason": "what layout issue was fixed",
+                  "html": "<div id='cardRoot'>...</div>",
+                  "css": "#cardRoot { ... }",
+                  "layoutJson": {
+                    "templateCode": "layout_fixed",
+                    "elements": []
+                  }
+                }
+
+                HTML/CSS rules:
+                - Do not create html, head, or body tags.
+                - Do not use script tags, iframe tags, or external CDN.
+                - Required IDs: cardRoot, nameText, jobText, introText, emailText, phoneText, profileImage, portfolioArea, linkArea.
+                - Keep every visual element inside cardRoot.
+                - Avoid overlapping text, contact, profileImage, and portfolioArea.
+                - Keep portfolioArea in whichever open zone works best, such as lower-right, lower-middle, right column, or bottom band, with about 430px x 178px of usable space for up to 8 compact items without clipping.
+                - Keep the current colors and mood, but change coordinates, widths, heights, font sizes, and spacing as much as needed to remove overlap.
+                - Use flexible wrapping, smaller font sizes, or adjusted spacing when text is long.
+                - Keep introText, contact details, and portfolioArea in separate non-overlapping zones.
+                - Section boxes must not overlap or touch. Keep at least 18px of visible gap between introText box, contact box, profileImage, name/job group, portfolioArea, and decorative panels.
+                - If introText and portfolioArea collide, shrink or move introText first, or move contact details, while preserving the card's colors and style.
+                - If the original template coordinates are the cause of overlap, ignore those coordinates and reflow the card into cleaner zones while preserving the same palette and visual mood.
+                - Avoid large decorative boxes if they cause crowding.
+                - Do not remove editable classes from major editable text elements.
+                """.formatted(
+                safe(card.getDisplayName()),
+                safe(card.getJobTitle()),
+                safe(card.getCompany()),
+                safe(card.getDepartment()),
+                safe(card.getIntro()),
+                safe(card.getEmail()),
+                safe(card.getPhone()),
+                safe(currentHtml),
+                safe(currentCss)
         );
     }
 
@@ -356,6 +586,7 @@ public class OpenAiCardService {
                 {"reason": "%s", "html": "fallback", "css": "fallback", "layoutJson": %s}
                 """.formatted(reason.replace("\"", "'"), defaultLayoutJson()));
         response.setPrompt(prompt);
+        response.setModelName("fallback");
         response.setFallback(true);
         return response;
     }

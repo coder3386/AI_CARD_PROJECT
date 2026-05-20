@@ -15,6 +15,7 @@ public class CardCreateRequest {
     private String mood;
     private String preferredColor;
     private String apiKey;
+    private String geminiApiKey;
     private String drawingDescription;
     private String drawingLayoutJson;
     private List<CardExtraItemRequest> extraItems = new ArrayList<>();
@@ -97,6 +98,14 @@ public class CardCreateRequest {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public String getGeminiApiKey() {
+        return geminiApiKey;
+    }
+
+    public void setGeminiApiKey(String geminiApiKey) {
+        this.geminiApiKey = geminiApiKey;
     }
 
     public String getDrawingLayoutJson() {

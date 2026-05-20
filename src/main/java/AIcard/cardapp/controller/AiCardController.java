@@ -5,6 +5,7 @@ import AIcard.cardapp.DTO.CardDrawingCreateRequest;
 import AIcard.cardapp.DTO.CardUpdateTextRequest;
 import AIcard.cardapp.entity.BusinessCard;
 import AIcard.cardapp.service.AiCardService;
+import AIcard.cardapp.service.CurrentUserService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -19,9 +20,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class AiCardController {
 
     private final AiCardService aiCardService;
+    private final CurrentUserService currentUserService;
 
-    public AiCardController(AiCardService aiCardService) {
+    public AiCardController(AiCardService aiCardService, CurrentUserService currentUserService) {
         this.aiCardService = aiCardService;
+        this.currentUserService = currentUserService;
     }
 
     @GetMapping("/cards/select-type")
@@ -38,7 +41,12 @@ public class AiCardController {
     @PostMapping("/cards/generate")
     public String generate(@ModelAttribute CardCreateRequest request, RedirectAttributes redirectAttributes) {
         try {
-            Long cardId = aiCardService.generate(request);
+            validateAtLeastOneApiKey(request.getApiKey(), request.getGeminiApiKey());
+            Long userId = requireCurrentUserId(redirectAttributes);
+            if (userId == null) {
+                return "redirect:/card/login";
+            }
+            Long cardId = aiCardService.generate(request, userId);
             return "redirect:/cards/" + cardId + "/preview";
         } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
@@ -55,7 +63,12 @@ public class AiCardController {
     @PostMapping("/cards/drawing/generate")
     public String generateDrawing(@ModelAttribute CardDrawingCreateRequest request, RedirectAttributes redirectAttributes) {
         try {
-            Long cardId = aiCardService.generateDrawing(request);
+            validateAtLeastOneApiKey(request.getApiKey(), request.getGeminiApiKey());
+            Long userId = requireCurrentUserId(redirectAttributes);
+            if (userId == null) {
+                return "redirect:/card/login";
+            }
+            Long cardId = aiCardService.generateDrawing(request, userId);
             return "redirect:/cards/drawing/" + cardId + "/preview";
         } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
@@ -79,6 +92,18 @@ public class AiCardController {
     public String updateText(@PathVariable Long cardId, @ModelAttribute CardUpdateTextRequest request) {
         aiCardService.updateText(cardId, request);
         return "redirect:/cards/" + cardId + "/preview";
+    }
+
+    @PostMapping("/cards/{cardId}/fix-layout")
+    public String fixLayout(@PathVariable Long cardId, @ModelAttribute CardUpdateTextRequest request, RedirectAttributes redirectAttributes) {
+        try {
+            validateAtLeastOneApiKey(request.getApiKey(), request.getGeminiApiKey());
+            aiCardService.fixLayout(cardId, request);
+            return "redirect:/cards/" + cardId + "/preview";
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/cards/" + cardId + "/preview";
+        }
     }
 
     @PostMapping("/cards/{cardId}/delete")
@@ -108,5 +133,23 @@ public class AiCardController {
         model.addAttribute("card", card);
         model.addAttribute("extraItems", aiCardService.getExtraItems(cardId));
         model.addAttribute("previewDocument", aiCardService.getPreviewDocument(cardId));
+    }
+
+    private void validateAtLeastOneApiKey(String openAiApiKey, String geminiApiKey) {
+        if (isBlank(openAiApiKey) && isBlank(geminiApiKey)) {
+            throw new IllegalStateException("GPT API Key 또는 Gemini API Key 중 하나는 입력해야 합니다.");
+        }
+    }
+
+    private Long requireCurrentUserId(RedirectAttributes redirectAttributes) {
+        Long userId = currentUserService.getCurrentUserIdOrNull();
+        if (userId == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "로그인 후 명함을 생성할 수 있습니다.");
+        }
+        return userId;
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }

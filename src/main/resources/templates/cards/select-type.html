@@ -22,6 +22,11 @@
                 개인 GPT API Key
                 <input id="personalApiKeyInput" type="password" placeholder="개인 GPT API Key를 입력하세요" autocomplete="off">
             </label>
+            <label>
+                개인 Gemini API Key
+                <input id="personalGeminiApiKeyInput" type="password" placeholder="개인 Gemini API Key를 입력하세요" autocomplete="off">
+            </label>
+            <p class="ai-error-message" id="apiKeySelectError" hidden>GPT API Key 또는 Gemini API Key 중 하나는 입력해야 합니다.</p>
 
             <div class="ai-select-actions">
                 <button class="ai-card-primary-button" type="button" id="textCardButton" th:data-target-url="@{/cards/new}">

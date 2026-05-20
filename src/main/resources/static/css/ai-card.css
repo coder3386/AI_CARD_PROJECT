@@ -334,6 +334,12 @@
     background: #ffffff;
 }
 
+.ai-extra-image-field input,
+.drawing-extra-image-field input {
+    padding: 8px;
+    background: #ffffff;
+}
+
 .ai-extra-row-head {
     display: flex;
     align-items: center;

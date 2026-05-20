@@ -305,6 +305,36 @@
     gap: 12px;
 }
 
+.drawing-extra-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.drawing-extra-actions button,
+.drawing-extra-item-title button {
+    min-height: 32px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 0 10px;
+    color: #1e293b;
+    background: #ffffff;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.drawing-extra-actions button:hover {
+    border-color: #0f766e;
+    color: #0f766e;
+}
+
+.drawing-extra-items {
+    display: grid;
+    gap: 10px;
+}
+
 .drawing-extra-empty {
     margin: 0;
     color: #64748b;
@@ -331,4 +361,15 @@
 .drawing-extra-item-title span {
     color: #64748b;
     font-size: 12px;
+}
+
+.drawing-extra-item-title button {
+    min-height: 28px;
+    color: #64748b;
+}
+
+.drawing-extra-item-title button:hover {
+    border-color: #ef4444;
+    color: #b91c1c;
+    background: #fff1f2;
 }

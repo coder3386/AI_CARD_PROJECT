@@ -19,6 +19,8 @@ import AIcard.cardapp.repository.CardDailyViewRepository;
 import AIcard.cardapp.repository.CardLayoutRepository;
 import AIcard.cardapp.repository.CardLinkRepository;
 import AIcard.cardapp.repository.TemplateRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,8 @@ import java.util.UUID;
 public class AiCardService {
 
     private static final Long TEST_USER_ID = 1L;
+    private static final int MAX_EXTRA_ITEMS = 8;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final BusinessCardRepository businessCardRepository;
     private final BusinessCardDetailRepository businessCardDetailRepository;
@@ -69,14 +73,22 @@ public class AiCardService {
 
     @Transactional
     public Long generate(CardCreateRequest request) {
+        return generate(request, TEST_USER_ID);
+    }
+
+    @Transactional
+    public Long generate(CardCreateRequest request, Long userId) {
+        if (userId == null) {
+            throw new IllegalStateException("로그인 사용자 정보를 찾을 수 없습니다.");
+        }
         List<Template> templates = templateRepository.findByActiveTrue();
         if (templates.isEmpty()) {
             throw new IllegalStateException("사용 가능한 명함 템플릿이 없습니다.");
         }
-        Template selectedTemplate = templates.getFirst();
+        Template selectedTemplate = chooseTemplateByRequest(templates, request);
 
         BusinessCard card = new BusinessCard();
-        card.setUserId(TEST_USER_ID);
+        card.setUserId(userId);
         card.setTemplateId(selectedTemplate.getTemplateId());
         card.setTitle(defaultText(request.getDisplayName(), "AI 명함"));
         card.setDisplayName(request.getDisplayName());
@@ -87,15 +99,18 @@ public class AiCardService {
         saveExtraItems(card.getCardId(), request.getExtraItems());
 
         AiCardResponse aiResponse = openAiCardService.generateCardDraft(card, templates, request);
+        selectedTemplate = resolveAiSelectedTemplate(templates, aiResponse.getLayoutJson(), selectedTemplate);
+        card.setTemplateId(selectedTemplate.getTemplateId());
+        card = businessCardRepository.save(card);
 
         CardAiResult aiResult = new CardAiResult();
         aiResult.setCardId(card.getCardId());
-        aiResult.setModelName(model);
+        aiResult.setModelName(defaultValue(aiResponse.getModelName(), model));
         aiResult.setPrompt(aiResponse.getPrompt());
         aiResult.setResultJson(aiResponse.getRawJson());
         aiResult.setGeneratedHtml(aiResponse.getHtml());
         aiResult.setGeneratedCss(aiResponse.getCss());
-        aiResult.setSelectedTemplateId(card.getTemplateId());
+        aiResult.setSelectedTemplateId(selectedTemplate.getTemplateId());
         aiResult.setAiReason(aiResponse.getReason());
         cardAiResultRepository.save(aiResult);
 
@@ -110,8 +125,14 @@ public class AiCardService {
 
     @Transactional
     public Long generateDrawing(CardDrawingCreateRequest request) {
+        return generateDrawing(request, TEST_USER_ID);
+    }
+
+    @Transactional
+    public Long generateDrawing(CardDrawingCreateRequest request, Long userId) {
         CardCreateRequest cardRequest = new CardCreateRequest();
         cardRequest.setApiKey(request.getApiKey());
+        cardRequest.setGeminiApiKey(request.getGeminiApiKey());
         cardRequest.setDrawingDescription(request.getDrawingDescription());
         cardRequest.setDrawingLayoutJson(request.getDrawingLayoutJson());
         cardRequest.setDisplayName(defaultValue(request.getDisplayName(), "그림 기반 명함"));
@@ -124,7 +145,7 @@ public class AiCardService {
         cardRequest.setExtraItems(request.getExtraItems());
         cardRequest.setMood("그림 또는 스케치 배치를 바탕으로 한 시각적인 명함");
         cardRequest.setPreferredColor("사용자 그림 설명에 어울리는 색상");
-        return generate(cardRequest);
+        return generate(cardRequest, userId);
     }
 
     @Transactional
@@ -134,6 +155,44 @@ public class AiCardService {
         businessCardRepository.save(card);
         saveDetail(cardId, request);
         saveExtraItems(cardId, request.getExtraItems());
+        htmlExportService.exportCard(cardId);
+    }
+
+    @Transactional
+    public void fixLayout(Long cardId, CardUpdateTextRequest request) {
+        BusinessCard card = getCard(cardId);
+        card.setDisplayName(request.getDisplayName());
+        businessCardRepository.save(card);
+        saveDetail(cardId, request);
+        saveExtraItems(cardId, request.getExtraItems());
+
+        CardAiResult latest = cardAiResultRepository.findTopByCardIdOrderByCreatedAtDesc(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("AI 생성 결과를 찾을 수 없습니다. cardId=" + cardId));
+        AiCardResponse fixed = openAiCardService.fixLayoutOnly(
+                card,
+                latest.getGeneratedHtml(),
+                latest.getGeneratedCss(),
+                request.getApiKey(),
+                request.getGeminiApiKey()
+        );
+
+        CardAiResult aiResult = new CardAiResult();
+        aiResult.setCardId(cardId);
+        aiResult.setModelName(defaultValue(fixed.getModelName(), latest.getModelName()));
+        aiResult.setPrompt(fixed.getPrompt());
+        aiResult.setResultJson(fixed.getRawJson());
+        aiResult.setGeneratedHtml(fixed.getHtml());
+        aiResult.setGeneratedCss(fixed.getCss());
+        aiResult.setSelectedTemplateId(latest.getSelectedTemplateId());
+        aiResult.setAiReason(fixed.getReason());
+        cardAiResultRepository.save(aiResult);
+
+        CardLayout layout = cardLayoutRepository.findByCardId(cardId)
+                .orElseGet(CardLayout::new);
+        layout.setCardId(cardId);
+        layout.setLayoutJson(fixed.getLayoutJson());
+        cardLayoutRepository.save(layout);
+
         htmlExportService.exportCard(cardId);
     }
 
@@ -230,6 +289,9 @@ public class AiCardService {
 
         int sortOrder = 0;
         for (CardExtraItemRequest itemRequest : extraItems) {
+            if (sortOrder >= MAX_EXTRA_ITEMS) {
+                break;
+            }
             if (itemRequest == null || isBlankExtraItem(itemRequest)) {
                 continue;
             }
@@ -239,6 +301,7 @@ public class AiCardService {
             item.setItemType(defaultType(itemRequest.getItemType()));
             item.setTitle(trimToNull(itemRequest.getTitle()));
             item.setUrl(trimToNull(itemRequest.getUrl()));
+            item.setImageUrl(trimToNull(itemRequest.getImageUrl()));
             item.setSortOrder(sortOrder++);
             cardLinkRepository.save(item);
         }
@@ -246,12 +309,112 @@ public class AiCardService {
 
     private boolean isBlankExtraItem(CardExtraItemRequest item) {
         return trimToNull(item.getTitle()) == null
-                && trimToNull(item.getUrl()) == null;
+                && trimToNull(item.getUrl()) == null
+                && trimToNull(item.getImageUrl()) == null;
     }
 
     private String defaultType(String itemType) {
         String value = trimToNull(itemType);
         return value == null ? "SKILL" : value;
+    }
+
+    private Template resolveAiSelectedTemplate(List<Template> templates, String layoutJson, Template fallback) {
+        String selectedCode = extractTemplateCode(layoutJson);
+        if (selectedCode == null) {
+            return fallback;
+        }
+
+        Template aiSelected = templates.stream()
+                .filter(template -> selectedCode.equalsIgnoreCase(template.getTemplateCode()))
+                .findFirst()
+                .orElse(fallback);
+
+        if (isFirstTemplate(templates, aiSelected) && !isFirstTemplate(templates, fallback)) {
+            return fallback;
+        }
+
+        return aiSelected;
+    }
+
+    private String extractTemplateCode(String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return null;
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(layoutJson);
+            return trimToNull(root.path("templateCode").asText());
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private Template chooseTemplateByRequest(List<Template> templates, CardCreateRequest request) {
+        Template fallback = templates.getFirst();
+        int modernScore = 0;
+        int simpleScore = 0;
+        int portfolioScore = 0;
+
+        String text = String.join(" ",
+                defaultValue(request.getDisplayName(), ""),
+                defaultValue(request.getJobTitle(), ""),
+                defaultValue(request.getCompany(), ""),
+                defaultValue(request.getDepartment(), ""),
+                defaultValue(request.getIntro(), ""),
+                defaultValue(request.getMood(), ""),
+                defaultValue(request.getPreferredColor(), ""),
+                defaultValue(request.getDrawingDescription(), "")
+        ).toLowerCase();
+
+        modernScore += score(text, "dark", "tech", "developer", "backend", "frontend", "java", "api", "system", "ai", "navy", "black", "neon", "개발", "백엔드", "프론트", "기술", "어두", "네이비", "블랙");
+        simpleScore += score(text, "clean", "white", "bright", "minimal", "student", "academic", "formal", "simple", "깔끔", "밝", "화이트", "흰", "학생", "학교", "대학교", "전공", "단정", "심플");
+        portfolioScore += score(text, "portfolio", "project", "creative", "design", "designer", "grid", "visual", "포트폴리오", "프로젝트", "창의", "디자인", "디자이너", "시각", "그림", "배치");
+
+        if (request.getExtraItems() != null) {
+            for (CardExtraItemRequest item : request.getExtraItems()) {
+                String type = item == null ? "" : defaultValue(item.getItemType(), "").toUpperCase();
+                if ("PORTFOLIO".equals(type)) {
+                    portfolioScore += 3;
+                } else if ("SKILL".equals(type) || "CERTIFICATE".equals(type)) {
+                    modernScore += 1;
+                }
+            }
+        }
+
+        if (portfolioScore >= simpleScore && portfolioScore >= modernScore && portfolioScore > 0) {
+            return findTemplateByCode(templates, "portfolio_grid", fallback);
+        }
+        if (simpleScore >= modernScore && simpleScore > 0) {
+            return findTemplateByCode(templates, "simple_white", fallback);
+        }
+        if (modernScore > 0) {
+            return findTemplateByCode(templates, "modern_dark", fallback);
+        }
+        return fallback;
+    }
+
+    private int score(String text, String... keywords) {
+        int score = 0;
+        for (String keyword : keywords) {
+            if (text.contains(keyword)) {
+                score++;
+            }
+        }
+        return score;
+    }
+
+    private Template findTemplateByCode(List<Template> templates, String code, Template fallback) {
+        return templates.stream()
+                .filter(template -> code.equalsIgnoreCase(template.getTemplateCode()))
+                .findFirst()
+                .orElse(fallback);
+    }
+
+    private boolean isFirstTemplate(List<Template> templates, Template template) {
+        return template != null
+                && !templates.isEmpty()
+                && template.getTemplateId() != null
+                && template.getTemplateId().equals(templates.getFirst().getTemplateId());
     }
 
     private String trimToNull(String value) {

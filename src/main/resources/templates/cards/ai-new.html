@@ -21,6 +21,7 @@
 
         <form class="ai-card-form" th:action="@{/cards/generate}" th:object="${cardCreateRequest}" method="post">
             <input type="hidden" name="apiKey" id="apiKeyField">
+            <input type="hidden" name="geminiApiKey" id="geminiApiKeyField">
 
             <div class="ai-form-section-title">기본정보</div>
             <div class="ai-card-grid">
@@ -67,7 +68,7 @@
             </div>
 
             <details class="ai-extra-panel">
-                <summary>기타</summary>
+                <summary>포트폴리오</summary>
                 <div class="ai-extra-actions">
                     <button type="button" data-extra-add="SKILL">기술 추가</button>
                     <button type="button" data-extra-add="CERTIFICATE">자격증 추가</button>

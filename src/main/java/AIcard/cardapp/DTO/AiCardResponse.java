@@ -8,6 +8,7 @@ public class AiCardResponse {
     private String layoutJson;
     private String rawJson;
     private String prompt;
+    private String modelName;
     private boolean fallback;
 
     public String getReason() {
@@ -56,6 +57,14 @@ public class AiCardResponse {
 
     public void setPrompt(String prompt) {
         this.prompt = prompt;
+    }
+
+    public String getModelName() {
+        return modelName;
+    }
+
+    public void setModelName(String modelName) {
+        this.modelName = modelName;
     }
 
     public boolean isFallback() {

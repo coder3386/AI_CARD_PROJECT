@@ -6,6 +6,7 @@ import java.util.List;
 public class CardDrawingCreateRequest {
 
     private String apiKey;
+    private String geminiApiKey;
     private String drawingDescription;
     private String drawingLayoutJson;
     private String displayName;
@@ -23,6 +24,14 @@ public class CardDrawingCreateRequest {
 
     public void setApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public String getGeminiApiKey() {
+        return geminiApiKey;
+    }
+
+    public void setGeminiApiKey(String geminiApiKey) {
+        this.geminiApiKey = geminiApiKey;
     }
 
     public String getDrawingDescription() {
