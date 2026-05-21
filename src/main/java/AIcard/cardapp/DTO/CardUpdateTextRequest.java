@@ -1,5 +1,7 @@
 package AIcard.cardapp.DTO;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +16,7 @@ public class CardUpdateTextRequest {
     private String phone;
     private String apiKey;
     private String geminiApiKey;
+    private MultipartFile profileImage;
     private List<CardExtraItemRequest> extraItems = new ArrayList<>();
 
     public String getDisplayName() {
@@ -86,6 +89,14 @@ public class CardUpdateTextRequest {
 
     public void setGeminiApiKey(String geminiApiKey) {
         this.geminiApiKey = geminiApiKey;
+    }
+
+    public MultipartFile getProfileImage() {
+        return profileImage;
+    }
+
+    public void setProfileImage(MultipartFile profileImage) {
+        this.profileImage = profileImage;
     }
 
     public List<CardExtraItemRequest> getExtraItems() {

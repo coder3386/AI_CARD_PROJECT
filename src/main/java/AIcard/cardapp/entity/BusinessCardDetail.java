@@ -43,6 +43,16 @@ public class BusinessCardDetail {
     @Column(name = "intro", columnDefinition = "text")
     private String intro;
 
+    @Lob
+    @Column(name = "profile_image", columnDefinition = "longblob")
+    private byte[] profileImage;
+
+    @Column(name = "profile_image_content_type", length = 100)
+    private String profileImageContentType;
+
+    @Column(name = "profile_image_filename", length = 255)
+    private String profileImageFilename;
+
     public Long getCardId() {
         return cardId;
     }
@@ -97,5 +107,33 @@ public class BusinessCardDetail {
 
     public void setIntro(String intro) {
         this.intro = intro;
+    }
+
+    public byte[] getProfileImage() {
+        return profileImage;
+    }
+
+    public void setProfileImage(byte[] profileImage) {
+        this.profileImage = profileImage;
+    }
+
+    public String getProfileImageContentType() {
+        return profileImageContentType;
+    }
+
+    public void setProfileImageContentType(String profileImageContentType) {
+        this.profileImageContentType = profileImageContentType;
+    }
+
+    public String getProfileImageFilename() {
+        return profileImageFilename;
+    }
+
+    public void setProfileImageFilename(String profileImageFilename) {
+        this.profileImageFilename = profileImageFilename;
+    }
+
+    public boolean hasProfileImage() {
+        return profileImage != null && profileImage.length > 0;
     }
 }

@@ -49,6 +49,15 @@ public class AiCardSeedData implements CommandLineRunner {
                 "black,green,yellow",
                 "디자이너,영상편집자,마케터"
         );
+        createTemplateIfMissing(
+                "drawing_custom",
+                "Drawing Custom",
+                "Custom card generated from the user's drawing layout without using a fixed template.",
+                "drawing,custom,wireframe",
+                "custom,sketch,layout-first",
+                "user-defined",
+                "all"
+        );
     }
 
     private void createTestUserIfMissing() {

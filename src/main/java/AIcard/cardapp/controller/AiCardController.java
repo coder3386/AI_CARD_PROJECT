@@ -4,8 +4,10 @@ import AIcard.cardapp.DTO.CardCreateRequest;
 import AIcard.cardapp.DTO.CardDrawingCreateRequest;
 import AIcard.cardapp.DTO.CardUpdateTextRequest;
 import AIcard.cardapp.entity.BusinessCard;
+import AIcard.cardapp.entity.BusinessCardDetail;
 import AIcard.cardapp.service.AiCardService;
 import AIcard.cardapp.service.CurrentUserService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -110,6 +112,24 @@ public class AiCardController {
     public String deleteCard(@PathVariable Long cardId) {
         aiCardService.deleteCard(cardId);
         return "redirect:/cards/new";
+    }
+
+    @GetMapping("/cards/{cardId}/profile-image")
+    public ResponseEntity<byte[]> profileImage(@PathVariable Long cardId) {
+        try {
+            BusinessCardDetail detail = aiCardService.getProfileImageDetail(cardId);
+            String contentType = detail.getProfileImageContentType();
+            MediaType mediaType = contentType == null
+                    ? MediaType.APPLICATION_OCTET_STREAM
+                    : MediaType.parseMediaType(contentType);
+
+            return ResponseEntity.ok()
+                    .contentType(mediaType)
+                    .header(HttpHeaders.CACHE_CONTROL, "no-cache")
+                    .body(detail.getProfileImage());
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @GetMapping("/public/card/{publicUrl}")

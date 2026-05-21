@@ -24,7 +24,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -79,18 +81,18 @@ public class AiCardService {
     @Transactional
     public Long generate(CardCreateRequest request, Long userId) {
         if (userId == null) {
-            throw new IllegalStateException("로그인 사용자 정보를 찾을 수 없습니다.");
+            throw new IllegalStateException("濡쒓렇???ъ슜???뺣낫瑜?李얠쓣 ???놁뒿?덈떎.");
         }
         List<Template> templates = templateRepository.findByActiveTrue();
         if (templates.isEmpty()) {
-            throw new IllegalStateException("사용 가능한 명함 템플릿이 없습니다.");
+            throw new IllegalStateException("?ъ슜 媛?ν븳 紐낇븿 ?쒗뵆由우씠 ?놁뒿?덈떎.");
         }
         Template selectedTemplate = chooseTemplateByRequest(templates, request);
 
         BusinessCard card = new BusinessCard();
         card.setUserId(userId);
         card.setTemplateId(selectedTemplate.getTemplateId());
-        card.setTitle(defaultText(request.getDisplayName(), "AI 명함"));
+        card.setTitle(defaultText(request.getDisplayName(), "AI 紐낇븿"));
         card.setDisplayName(request.getDisplayName());
         card.setPublicUrl(makePublicUrl());
         card = businessCardRepository.save(card);
@@ -130,22 +132,63 @@ public class AiCardService {
 
     @Transactional
     public Long generateDrawing(CardDrawingCreateRequest request, Long userId) {
+        if (userId == null) {
+            throw new IllegalStateException("濡쒓렇???ъ슜???뺣낫瑜?李얠쓣 ???놁뒿?덈떎.");
+        }
         CardCreateRequest cardRequest = new CardCreateRequest();
         cardRequest.setApiKey(request.getApiKey());
         cardRequest.setGeminiApiKey(request.getGeminiApiKey());
         cardRequest.setDrawingDescription(request.getDrawingDescription());
         cardRequest.setDrawingLayoutJson(request.getDrawingLayoutJson());
-        cardRequest.setDisplayName(defaultValue(request.getDisplayName(), "그림 기반 명함"));
+        cardRequest.setDisplayName(defaultValue(request.getDisplayName(), "洹몃┝ 湲곕컲 紐낇븿"));
         cardRequest.setJobTitle(request.getJobTitle());
         cardRequest.setCompany(request.getCompany());
         cardRequest.setDepartment(request.getDepartment());
         cardRequest.setIntro(request.getIntro());
         cardRequest.setEmail(request.getEmail());
         cardRequest.setPhone(request.getPhone());
+        cardRequest.setProfileImage(request.getProfileImage());
         cardRequest.setExtraItems(request.getExtraItems());
-        cardRequest.setMood("그림 또는 스케치 배치를 바탕으로 한 시각적인 명함");
-        cardRequest.setPreferredColor("사용자 그림 설명에 어울리는 색상");
-        return generate(cardRequest, userId);
+        cardRequest.setMood("洹몃┝ ?먮뒗 ?ㅼ?移?諛곗튂瑜?諛뷀깢?쇰줈 ???쒓컖?곸씤 紐낇븿");
+        cardRequest.setPreferredColor("?ъ슜??洹몃┝ ?ㅻ챸???댁슱由щ뒗 ?됱긽");
+        return generateDrawingCustom(cardRequest, userId);
+    }
+
+    private Long generateDrawingCustom(CardCreateRequest cardRequest, Long userId) {
+        Template drawingTemplate = getDrawingCustomTemplate();
+
+        BusinessCard card = new BusinessCard();
+        card.setUserId(userId);
+        card.setTemplateId(drawingTemplate.getTemplateId());
+        card.setTitle(defaultText(cardRequest.getDisplayName(), "Drawing Card"));
+        card.setDisplayName(cardRequest.getDisplayName());
+        card.setPublicUrl(makePublicUrl());
+        card = businessCardRepository.save(card);
+
+        BusinessCardDetail detail = saveDetail(card.getCardId(), cardRequest);
+        card.setDetail(detail);
+        saveExtraItems(card.getCardId(), cardRequest.getExtraItems());
+
+        AiCardResponse aiResponse = openAiCardService.generateDrawingCardDraft(card, cardRequest);
+
+        CardAiResult aiResult = new CardAiResult();
+        aiResult.setCardId(card.getCardId());
+        aiResult.setModelName(defaultValue(aiResponse.getModelName(), model));
+        aiResult.setPrompt(aiResponse.getPrompt());
+        aiResult.setResultJson(aiResponse.getRawJson());
+        aiResult.setGeneratedHtml(aiResponse.getHtml());
+        aiResult.setGeneratedCss(aiResponse.getCss());
+        aiResult.setSelectedTemplateId(drawingTemplate.getTemplateId());
+        aiResult.setAiReason(aiResponse.getReason());
+        cardAiResultRepository.save(aiResult);
+
+        CardLayout layout = new CardLayout();
+        layout.setCardId(card.getCardId());
+        layout.setLayoutJson(aiResponse.getLayoutJson());
+        cardLayoutRepository.save(layout);
+
+        htmlExportService.exportCard(card.getCardId());
+        return card.getCardId();
     }
 
     @Transactional
@@ -153,7 +196,8 @@ public class AiCardService {
         BusinessCard card = getCard(cardId);
         card.setDisplayName(request.getDisplayName());
         businessCardRepository.save(card);
-        saveDetail(cardId, request);
+        BusinessCardDetail detail = saveDetail(cardId, request);
+        card.setDetail(detail);
         saveExtraItems(cardId, request.getExtraItems());
         htmlExportService.exportCard(cardId);
     }
@@ -163,11 +207,12 @@ public class AiCardService {
         BusinessCard card = getCard(cardId);
         card.setDisplayName(request.getDisplayName());
         businessCardRepository.save(card);
-        saveDetail(cardId, request);
+        BusinessCardDetail detail = saveDetail(cardId, request);
+        card.setDetail(detail);
         saveExtraItems(cardId, request.getExtraItems());
 
         CardAiResult latest = cardAiResultRepository.findTopByCardIdOrderByCreatedAtDesc(cardId)
-                .orElseThrow(() -> new IllegalArgumentException("AI 생성 결과를 찾을 수 없습니다. cardId=" + cardId));
+                .orElseThrow(() -> new IllegalArgumentException("AI ?앹꽦 寃곌낵瑜?李얠쓣 ???놁뒿?덈떎. cardId=" + cardId));
         AiCardResponse fixed = openAiCardService.fixLayoutOnly(
                 card,
                 latest.getGeneratedHtml(),
@@ -206,7 +251,7 @@ public class AiCardService {
     @Transactional(readOnly = true)
     public BusinessCard getCard(Long cardId) {
         BusinessCard card = businessCardRepository.findById(cardId)
-                .orElseThrow(() -> new IllegalArgumentException("명함을 찾을 수 없습니다. cardId=" + cardId));
+                .orElseThrow(() -> new IllegalArgumentException("紐낇븿??李얠쓣 ???놁뒿?덈떎. cardId=" + cardId));
         businessCardDetailRepository.findById(cardId).ifPresent(card::setDetail);
         return card;
     }
@@ -221,14 +266,24 @@ public class AiCardService {
         return cardLinkRepository.findByCardIdOrderBySortOrderAscLinkIdAsc(cardId);
     }
 
+    @Transactional(readOnly = true)
+    public BusinessCardDetail getProfileImageDetail(Long cardId) {
+        BusinessCardDetail detail = businessCardDetailRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("프로필 이미지가 없습니다. cardId=" + cardId));
+        if (!detail.hasProfileImage()) {
+            throw new IllegalArgumentException("프로필 이미지가 없습니다. cardId=" + cardId);
+        }
+        return detail;
+    }
+
     @Transactional
     public String readPublicCard(String publicUrl) {
         BusinessCard card = businessCardRepository.findByPublicUrl(publicUrl)
-                .orElseThrow(() -> new IllegalArgumentException("공개 명함을 찾을 수 없습니다."));
+                .orElseThrow(() -> new IllegalArgumentException("怨듦컻 紐낇븿??李얠쓣 ???놁뒿?덈떎."));
         businessCardDetailRepository.findById(card.getCardId()).ifPresent(card::setDetail);
 
         if (!"ACTIVE".equals(card.getStatus()) || !Boolean.TRUE.equals(card.getPublicCard())) {
-            throw new IllegalStateException("공개되지 않은 명함입니다.");
+            throw new IllegalStateException("怨듦컻?섏? ?딆? 紐낇븿?낅땲??");
         }
 
         card.setViewCount(card.getViewCount() == null ? 1L : card.getViewCount() + 1L);
@@ -265,6 +320,7 @@ public class AiCardService {
         detail.setIntro(request.getIntro());
         detail.setEmail(request.getEmail());
         detail.setPhone(request.getPhone());
+        saveProfileImageIfPresent(detail, request.getProfileImage());
         return businessCardDetailRepository.save(detail);
     }
 
@@ -278,7 +334,27 @@ public class AiCardService {
         detail.setIntro(request.getIntro());
         detail.setEmail(request.getEmail());
         detail.setPhone(request.getPhone());
+        saveProfileImageIfPresent(detail, request.getProfileImage());
         return businessCardDetailRepository.save(detail);
+    }
+
+    private void saveProfileImageIfPresent(BusinessCardDetail detail, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return;
+        }
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
+            throw new IllegalStateException("?꾨줈???ъ쭊? ?대?吏 ?뚯씪留??낅줈?쒗븷 ???덉뒿?덈떎.");
+        }
+
+        try {
+            detail.setProfileImage(file.getBytes());
+            detail.setProfileImageContentType(contentType);
+            detail.setProfileImageFilename(trimToNull(file.getOriginalFilename()));
+        } catch (IOException ex) {
+            throw new IllegalStateException("프로필 사진 저장에 실패했습니다.", ex);
+        }
     }
 
     private void saveExtraItems(Long cardId, List<CardExtraItemRequest> extraItems) {
@@ -366,7 +442,7 @@ public class AiCardService {
                 defaultValue(request.getDrawingDescription(), "")
         ).toLowerCase();
 
-        modernScore += score(text, "dark", "tech", "developer", "backend", "frontend", "java", "api", "system", "ai", "navy", "black", "neon", "개발", "백엔드", "프론트", "기술", "어두", "네이비", "블랙");
+        modernScore += score(text, "dark", "tech", "developer", "backend", "frontend", "java", "api", "system", "ai", "navy", "black", "neon", "개발", "백엔드", "프론트", "기술", "어두", "다크", "블랙");
         simpleScore += score(text, "clean", "white", "bright", "minimal", "student", "academic", "formal", "simple", "깔끔", "밝", "화이트", "흰", "학생", "학교", "대학교", "전공", "단정", "심플");
         portfolioScore += score(text, "portfolio", "project", "creative", "design", "designer", "grid", "visual", "포트폴리오", "프로젝트", "창의", "디자인", "디자이너", "시각", "그림", "배치");
 
@@ -410,6 +486,17 @@ public class AiCardService {
                 .orElse(fallback);
     }
 
+    private Template getDrawingCustomTemplate() {
+        return templateRepository.findByTemplateCode("drawing_custom")
+                .orElseGet(() -> {
+                    List<Template> templates = templateRepository.findByActiveTrue();
+                    if (templates.isEmpty()) {
+                        throw new IllegalStateException("?ъ슜 媛?ν븳 紐낇븿 ?쒗뵆由우씠 ?놁뒿?덈떎.");
+                    }
+                    return templates.getFirst();
+                });
+    }
+
     private boolean isFirstTemplate(List<Template> templates, Template template) {
         return template != null
                 && !templates.isEmpty()
@@ -433,7 +520,7 @@ public class AiCardService {
     }
 
     private String defaultText(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value + " 명함";
+        return value == null || value.isBlank() ? fallback : value + " 紐낇븿";
     }
 
     private String defaultValue(String value, String fallback) {

@@ -19,12 +19,16 @@
 
         <p class="ai-error-message" th:if="${errorMessage}" th:text="${errorMessage}"></p>
 
-        <form class="ai-card-form" th:action="@{/cards/generate}" th:object="${cardCreateRequest}" method="post">
+        <form class="ai-card-form" th:action="@{/cards/generate}" th:object="${cardCreateRequest}" method="post" enctype="multipart/form-data">
             <input type="hidden" name="apiKey" id="apiKeyField">
             <input type="hidden" name="geminiApiKey" id="geminiApiKeyField">
 
             <div class="ai-form-section-title">기본정보</div>
             <div class="ai-card-grid">
+                <label>
+                    프로필 사진
+                    <input type="file" th:field="*{profileImage}" accept="image/*">
+                </label>
                 <label>
                     이름
                     <input type="text" th:field="*{displayName}" placeholder="홍길동" required>

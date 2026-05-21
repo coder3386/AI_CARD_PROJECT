@@ -1,5 +1,7 @@
 package AIcard.cardapp.DTO;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -18,6 +20,7 @@ public class CardCreateRequest {
     private String geminiApiKey;
     private String drawingDescription;
     private String drawingLayoutJson;
+    private MultipartFile profileImage;
     private List<CardExtraItemRequest> extraItems = new ArrayList<>();
 
     public String getDisplayName() {
@@ -122,6 +125,14 @@ public class CardCreateRequest {
 
     public void setDrawingLayoutJson(String drawingLayoutJson) {
         this.drawingLayoutJson = drawingLayoutJson;
+    }
+
+    public MultipartFile getProfileImage() {
+        return profileImage;
+    }
+
+    public void setProfileImage(MultipartFile profileImage) {
+        this.profileImage = profileImage;
     }
 
     public List<CardExtraItemRequest> getExtraItems() {

@@ -1,5 +1,7 @@
 package AIcard.cardapp.DTO;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,6 +18,7 @@ public class CardDrawingCreateRequest {
     private String intro;
     private String email;
     private String phone;
+    private MultipartFile profileImage;
     private List<CardExtraItemRequest> extraItems = new ArrayList<>();
 
     public String getApiKey() {
@@ -104,6 +107,14 @@ public class CardDrawingCreateRequest {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public MultipartFile getProfileImage() {
+        return profileImage;
+    }
+
+    public void setProfileImage(MultipartFile profileImage) {
+        this.profileImage = profileImage;
     }
 
     public List<CardExtraItemRequest> getExtraItems() {

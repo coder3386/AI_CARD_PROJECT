@@ -27,9 +27,17 @@
             <p class="ai-public-url" th:text="'public_url: ' + ${card.publicUrl}">public_url</p>
         </div>
 
-        <form class="ai-card-form" th:action="@{/cards/{cardId}/update-text(cardId=${card.cardId})}" method="post">
+        <form class="ai-card-form" th:action="@{/cards/{cardId}/update-text(cardId=${card.cardId})}" method="post" enctype="multipart/form-data">
             <input type="hidden" name="apiKey" id="apiKeyField">
             <input type="hidden" name="geminiApiKey" id="geminiApiKeyField">
+
+            <div class="ai-profile-edit">
+                <img th:if="${card.hasProfileImage()}" th:src="@{/cards/{cardId}/profile-image(cardId=${card.cardId})}" alt="프로필 사진" class="ai-profile-preview">
+                <label>
+                    프로필 사진
+                    <input type="file" name="profileImage" accept="image/*">
+                </label>
+            </div>
 
             <div class="ai-form-section-title">기본정보</div>
             <label>

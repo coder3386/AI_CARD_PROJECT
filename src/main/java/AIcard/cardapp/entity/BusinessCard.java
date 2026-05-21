@@ -244,4 +244,12 @@ public class BusinessCard {
     public String getIntro() {
         return detail == null ? null : detail.getIntro();
     }
+
+    public boolean hasProfileImage() {
+        return detail != null && detail.hasProfileImage();
+    }
+
+    public String getProfileImageContentType() {
+        return detail == null ? null : detail.getProfileImageContentType();
+    }
 }
