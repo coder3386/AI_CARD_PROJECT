@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/main_style.css}">
+    <link rel="stylesheet" th:href="@{/css/menu_style.css}">
+</head>
+<body>
+<a th:href="@{/dont}" class="btn-primary">비활성화 페이지임</a>
+<a th:href="@{/managertest}" class="btn-primary">매니저 페이지임</a>
+<a th:href="@{/manager}" class="btn-primary">매니저 페이지임[권한 필요]</a>
+</body>
+</html>

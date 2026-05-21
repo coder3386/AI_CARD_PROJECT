@@ -1,0 +1,101 @@
+/* --- 비활성화 안내 페이지 전용 스타일 --- */
+
+/* 페이지 전체를 화면 중앙 정렬하기 위한 래퍼 */
+.inactive-page-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    background-color: var(--bg-light);
+}
+
+/* 안내창 카드가 들어갈 박스 (기존 feature-card 스타일 응용) */
+.inactive-card-box {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 60px 40px;
+    max-width: 520px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 20px 40px -10px rgba(93, 58, 26, 0.08); /* 메인 진한 갈색을 은은하게 섀도우로 활용 */
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* 기존 icon-box를 팝업에 맞게 키운 스타일 */
+.icon-box-large {
+    width: 80px;
+    height: 80px;
+    background: #FEF3C7;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin: 0 auto 25px;
+    font-size: 2.5rem;
+}
+
+/* 비활성화 안내 전용 배지 컬러 수정 */
+.badge-inactive {
+    background: #FEE2E2 !important; /* 연한 빨간색 배경 */
+    color: #EF4444 !important; /* 빨간색 글씨 */
+}
+
+/* 타이틀 디자인 */
+.inactive-card-box h1 {
+    font-size: 2.2rem;
+    line-height: 1.4;
+    margin-bottom: 20px;
+    font-weight: 800;
+    color: var(--text-main);
+}
+
+.inactive-card-box h1 span {
+    color: var(--primary-color);
+}
+
+/* 본문 텍스트 */
+.inactive-card-box p {
+    font-size: 1.05rem;
+    color: var(--text-sub);
+    line-height: 1.7;
+    margin-bottom: 40px;
+}
+
+/* 부드럽게 위로 올라오는 등장 애니메이션 효과 */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 반응형 대응 */
+@media (max-width: 480px) {
+    .inactive-card-box {
+        padding: 40px 20px;
+    }
+
+    .inactive-card-box h1 {
+        font-size: 1.8rem;
+    }
+
+    .inactive-card-box p {
+        font-size: 0.95rem;
+    }
+
+    .hero-btns {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .hero-btns a {
+        width: 100%;
+    }
+}
