@@ -27,6 +27,15 @@ public class UsersMember {
     private String phone;
     private String role; // ADMIN 또는 USER
 
+    // --- 개인정보 수정 관련 메서드 ---
+    public void updatePassword(String newPassword) {
+        this.password = newPassword;
+    }
+
+    public void updatePhone(String newPhone) {
+        this.phone = newPhone;
+    }
+
     @Builder
     public UsersMember(String loginId, String password, String name, String email, String phone, String role) {
         this.loginId = loginId;
