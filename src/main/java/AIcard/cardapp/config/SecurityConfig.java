@@ -45,6 +45,16 @@ public class SecurityConfig {
                         .requestMatchers("/card/edit").authenticated()
                         //.requestMatchers("manager/").hasRole("MANAGER")
                         .anyRequest().permitAll() // 그 외 모든 요청은 로그인해야함
+                        .requestMatchers(
+                                "/",
+                                "/card/join",
+                                "/card/login",
+                                "/cards/**",
+                                "/public/**",
+                                "/css/**",
+                                "/js/**"
+                        ).permitAll() // 누구나 접근 가능
+                        .anyRequest().authenticated() // 그 외 모든 요청은 로그인해야함
                 )
 
                 // C. 커스텀 로그인 설정
