@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${pageTitle ?: 'AICARD 매니저 마스터 기능'}">AICARD 매니저 마스터 기능</title>
 
-    <link rel="stylesheet" as="style" crossorigin
-          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
+    <link rel="stylesheet" as="style"
+          crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
 
     <link rel="stylesheet" th:href="@{/css/main_style.css}">
     <link rel="stylesheet" th:href="@{/css/manager_style.css}">
@@ -22,14 +22,17 @@
 
         <nav class="sidebar-menu">
             <ul>
+                <li class="menu-item" th:classappend="${activeMenu == 'main'} ? 'active'">
+                    <a th:href="@{/manager/rbac}"> <span>메인페이지</span></a>
+                </li>
                 <li class="menu-item" th:classappend="${activeMenu == 'rbac'} ? 'active'">
-                    <a th:href="@{/manager/rbac}"><i>🛡️</i> <span>운영자 권한 관리 (RBAC)</span></a>
+                    <a th:href="@{/manager/rbac}"><i>🛡️</i> <span>운영자 권한 관리</span></a>
                 </li>
                 <li class="menu-item" th:classappend="${activeMenu == 'managerLog'} ? 'active'">
-                    <a th:href="@{/manager/log/manager}"><i>📝</i> <span>활동 로그 확인 (Manager)</span></a>
+                    <a th:href="@{/manager/log/manager}"><i>📝</i> <span>활동 로그 확인(관리자)</span></a>
                 </li>
                 <li class="menu-item" th:classappend="${activeMenu == 'userLog'} ? 'active'">
-                    <a th:href="@{/manager/log/user}"><i>👤</i> <span>활동 로그 확인 (User)</span></a>
+                    <a th:href="@{/manager/log/user}"><i>👤</i> <span>활동 로그 확인(사용자)</span></a>
                 </li>
                 <li class="menu-item" th:classappend="${activeMenu == 'session'} ? 'active'">
                     <a th:href="@{/manager/session}"><i>🔑</i> <span>사용자 세션 조회</span></a>
@@ -137,6 +140,6 @@
 
 </div>
 
-<script th:src="@{/js/manager_events.js}"></script>
+<script th:src="@{/js/manager_event.js}"></script>
 </body>
 </html>

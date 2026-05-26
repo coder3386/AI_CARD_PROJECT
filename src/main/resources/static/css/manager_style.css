@@ -1,0 +1,341 @@
+/* --- 매니저 레이아웃 전용 확장 인프라 스펙 --- */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.manager-container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: var(--bg-light);
+}
+
+/* --- 좌측 사이드바 세부 스타일 --- */
+.manager-sidebar {
+    width: 280px;
+    background-color: var(--text-main);
+    color: var(--white);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border-color);
+}
+
+.sidebar-logo {
+    padding: 24px;
+    font-size: 1.6rem;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    border-bottom: 1px solid rgba(229, 213, 197, 0.1);
+}
+
+.sidebar-logo span {
+    color: var(--accent-yellow);
+}
+
+.sidebar-menu {
+    flex: 1;
+    padding: 20px 12px;
+    overflow-y: auto;
+}
+
+.sidebar-menu ul {
+    list-style: none;
+}
+
+.menu-item {
+    margin-bottom: 6px;
+}
+
+.menu-item a {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    border-radius: 10px;
+    color: var(--border-color);
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.menu-item i {
+    font-style: normal;
+    font-size: 1.1rem;
+}
+
+.sidebar-menu .menu-item:hover a,
+.sidebar-menu .menu-item.active a {
+    background-color: var(--primary-color);
+    color: #FFFBEB;
+}
+
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid rgba(229, 213, 197, 0.1);
+}
+
+.mini-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mini-avatar {
+    width: 36px;
+    height: 36px;
+    background-color: var(--primary-dark);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mini-name {
+    font-size: 0.85rem;
+    color: var(--border-color);
+}
+
+/* --- 본문 코어 파트 --- */
+.manager-main-contents {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.manager-topbar {
+    height: 70px;
+    background: var(--white);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px;
+}
+
+.topbar-title {
+    font-weight: 800;
+    font-size: 1.2rem;
+}
+
+.topbar-title span {
+    font-weight: 400;
+    color: var(--text-sub);
+    font-size: 0.95rem;
+    margin-left: 6px;
+}
+
+.topbar-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-sm {
+    padding: 8px 16px !important;
+    font-size: 0.85rem !important;
+    cursor: pointer;
+    border: none;
+}
+
+/* --- 대시보드 내부 메인 그리드 분할 스페이스 --- */
+.manager-dashboard-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    padding: 24px;
+    overflow-y: auto;
+}
+
+/* 중간 영역 */
+.manager-center-view {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.welcome-card {
+    background: var(--white);
+    padding: 30px;
+    border-radius: 18px;
+    border: 1px solid var(--border-color);
+}
+
+.welcome-card h2 {
+    margin-bottom: 10px;
+    color: var(--text-main);
+}
+
+.welcome-card p {
+    color: var(--text-sub);
+    font-size: 0.95rem;
+}
+
+.dashboard-placeholder-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.view-card-dummy {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 24px;
+    min-height: 260px;
+}
+
+.view-card-dummy h3 {
+    font-size: 1.05rem;
+    margin-bottom: 15px;
+    border-left: 4px solid var(--primary-color);
+    padding-left: 10px;
+}
+
+.dummy-chart-area, .dummy-list-area {
+    height: 180px;
+    background-color: var(--bg-light);
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-sub);
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 20px;
+}
+
+/* --- 우측 매니저 프로필 정보 블록 세부 스타일 --- */
+.manager-right-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.manager-profile-box {
+    background-color: var(--primary-dark);
+    color: #FFFBEB;
+    border-radius: 18px;
+    padding: 30px 24px;
+    box-shadow: 0 10px 20px rgba(93, 58, 26, 0.15);
+}
+
+.profile-avatar-wrapper {
+    text-align: center;
+    margin-bottom: 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 20px;
+}
+
+.profile-avatar-circle {
+    width: 70px;
+    height: 70px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.2rem;
+}
+
+.profile-main-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.profile-details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.detail-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+}
+
+.detail-item .label {
+    color: var(--border-color);
+    opacity: 0.8;
+}
+
+.detail-item .value {
+    font-weight: 500;
+}
+
+.gold-text {
+    color: var(--accent-yellow);
+    font-weight: 700 !important;
+}
+
+/* 우측 하부 서브 컴포넌트 스타일 */
+.manager-sub-card {
+    background: var(--white);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 20px;
+}
+
+.sub-card-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 15px;
+}
+
+.more-link {
+    font-size: 0.8rem;
+    color: var(--primary-color);
+}
+
+.team-avatars-dummy {
+    display: flex;
+    gap: 8px;
+}
+
+.mini-user-circle {
+    width: 32px;
+    height: 32px;
+    background: var(--bg-light);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+}
+
+.memo-card h4 {
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+}
+
+.memo-card textarea {
+    width: 100%;
+    height: 80px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    resize: none;
+    margin-bottom: 10px;
+    background-color: var(--bg-light);
+}
+
+.memo-card textarea:focus {
+    outline: 1px solid var(--primary-color);
+}
+
+.block-btn {
+    width: 100%;
+    display: block;
+    text-align: center;
+}
