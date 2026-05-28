@@ -23,7 +23,7 @@
         <nav class="sidebar-menu">
             <ul>
                 <li class="menu-item" th:classappend="${activeMenu == 'main'} ? 'active'">
-                    <a th:href="@{/manager/rbac}"> <span>메인페이지</span></a>
+                    <a th:href="@{/manager/dashboard}"> <span>메인페이지</span></a>
                 </li>
                 <li class="menu-item" th:classappend="${activeMenu == 'rbac'} ? 'active'">
                     <a th:href="@{/manager/rbac}"><i>🛡️</i> <span>운영자 권한 관리</span></a>
@@ -73,32 +73,19 @@
 
         <div class="manager-dashboard-grid">
 
-            <main class="manager-center-view">
-                <div class="welcome-card">
-                    <h2>안녕하세요, <span th:text="${loginUser?.name ?: '매니저'}">매니저</span>님! 👋</h2>
-                    <p>좌측 메뉴를 선택하시면 해당 마스터 관리 기능 레이아웃으로 전환됩니다.</p>
-                </div>
-
-                <div class="dashboard-placeholder-row">
-                    <div class="view-card-dummy">
-                        <h3>📊 실시간 시스템 요약</h3>
-                        <div class="dummy-chart-area">선택된 메뉴의 데이터 시각화 차트 구역</div>
-                    </div>
-                    <div class="view-card-dummy">
-                        <h3>⚡ 빠른 작업 대기열</h3>
-                        <div class="dummy-list-area">처리가 필요한 데이터 리스트 구역</div>
-                    </div>
-                </div>
+            <main th:replace="~{__${contentFragment}__}">
             </main>
+            <!--
+            <main th:replace="${contentFragment} ?: 'manager/fragments/dashboard :: dashboardContent'">
+            </main>
+            -->
 
             <aside class="manager-right-sidebar">
-
                 <div class="manager-profile-box" th:if="${loginUser != null}">
                     <div class="profile-avatar-wrapper">
                         <div class="profile-avatar-circle">👤</div>
                         <div class="profile-main-name" th:text="${loginUser.name}">매니저 이름</div>
                     </div>
-
                     <div class="profile-details-list">
                         <div class="detail-item">
                             <span class="label">보안 등급</span>
@@ -132,7 +119,6 @@
                     <textarea placeholder="다른 매니저들과 공유할 메모를 남겨주세요..."></textarea>
                     <button class="btn-primary btn-sm block-btn">메모 저장</button>
                 </div>
-
             </aside>
 
         </div>
