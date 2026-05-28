@@ -30,7 +30,11 @@ public class AiCardController {
     }
 
     @GetMapping("/cards/select-type")
-    public String selectType() {
+    public String selectType(RedirectAttributes redirectAttributes) {
+        if (currentUserService.getCurrentUserIdOrNull() == null) {
+            redirectAttributes.addFlashAttribute("loginRequiredMessage", "로그인 후 이용해주세요.");
+            return "redirect:/card/login";
+        }
         return "cards/select-type";
     }
 
