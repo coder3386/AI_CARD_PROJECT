@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle ?: 'AICARD 매니저 마스터 기능'}">AICARD 매니저 마스터 기능</title>
+
+    <link rel="stylesheet" as="style"
+          crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
+
+    <link rel="stylesheet" th:href="@{/css/main_style.css}">
+    <link rel="stylesheet" th:href="@{/css/manager_style.css}">
+</head>
+<body>
+
+<div class="manager-container">
+
+    <aside class="manager-sidebar">
+        <div class="sidebar-logo">
+            <a th:href="@{/manager/dashboard}">AICARD<span>.</span></a>
+        </div>
+
+        <nav class="sidebar-menu">
+            <ul>
+                <li class="menu-item" th:classappend="${activeMenu == 'main'} ? 'active'">
+                    <a th:href="@{/manager/dashboard}"> <span>메인페이지</span></a>
+                </li>
+                <li class="menu-item" th:classappend="${activeMenu == 'rbac'} ? 'active'">
+                    <a th:href="@{/manager/rbac}"><i>🛡️</i> <span>운영자 권한 관리</span></a>
+                </li>
+                <li class="menu-item" th:classappend="${activeMenu == 'managerLog'} ? 'active'">
+                    <a th:href="@{/manager/log/manager}"><i>📝</i> <span>활동 로그 확인(관리자)</span></a>
+                </li>
+                <li class="menu-item" th:classappend="${activeMenu == 'userLog'} ? 'active'">
+                    <a th:href="@{/manager/log/user}"><i>👤</i> <span>활동 로그 확인(사용자)</span></a>
+                </li>
+                <li class="menu-item" th:classappend="${activeMenu == 'session'} ? 'active'">
+                    <a th:href="@{/manager/session}"><i>🔑</i> <span>사용자 세션 조회</span></a>
+                </li>
+                <li class="menu-item" th:classappend="${activeMenu == 'communication'} ? 'active'">
+                    <a th:href="@{/manager/comm}"><i>💬</i> <span>커뮤니케이션 도구</span></a>
+                </li>
+                <li class="menu-item" th:classappend="${activeMenu == 'qna'} ? 'active'">
+                    <a th:href="@{/manager/qna}"><i>❓</i> <span>문의 대답 페이지</span></a>
+                </li>
+                <li class="menu-item" th:classappend="${activeMenu == 'notice'} ? 'active'">
+                    <a th:href="@{/manager/notice}"><i>📢</i> <span>전체공지 페이지</span></a>
+                </li>
+                <li class="menu-item" th:classappend="${activeMenu == 'stats'} ? 'active'">
+                    <a th:href="@{/manager/stats}"><i>📈</i> <span>통계</span></a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer" th:if="${loginUser != null}">
+            <div class="mini-profile">
+                <div class="mini-avatar">👤</div>
+                <span class="mini-name" th:text="${loginUser?.name} + ' master'">매니저 master</span>
+            </div>
+        </div>
+    </aside>
+
+    <div class="manager-main-contents">
+
+        <header class="manager-topbar">
+            <div class="topbar-title">AICARD 매니저 시스템 <span th:text="'> ' + ${currentMenuName ?: '대시보드'}">> 대시보드</span>
+            </div>
+            <div class="topbar-actions">
+                <a th:href="@{/}" target="_blank" class="btn-secondary btn-sm">미리보기</a>
+                <a th:href="@{/logout}" class="btn-primary btn-sm">나가기</a>
+            </div>
+        </header>
+
+        <div class="manager-dashboard-grid">
+
+            <main th:replace="~{__${contentFragment}__}">
+            </main>
+            <!--
+            <main th:replace="${contentFragment} ?: 'manager/fragments/dashboard :: dashboardContent'">
+            </main>
+            -->
+
+            <aside class="manager-right-sidebar">
+                <div class="manager-profile-box" th:if="${loginUser != null}">
+                    <div class="profile-avatar-wrapper">
+                        <div class="profile-avatar-circle">👤</div>
+                        <div class="profile-main-name" th:text="${loginUser.name}">매니저 이름</div>
+                    </div>
+                    <div class="profile-details-list">
+                        <div class="detail-item">
+                            <span class="label">보안 등급</span>
+                            <span class="value gold-text" th:text="${loginUser.role}">Super Manager</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="label">이메일</span>
+                            <span class="value" th:text="${loginUser.email}">manager@aicard.com</span>
+                        </div>
+                        <div class="detail-item" th:if="${loginUser.phone != null}">
+                            <span class="label">연락처</span>
+                            <span class="value" th:text="${loginUser.phone}">010-0000-0000</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="manager-sub-card">
+                    <div class="sub-card-header">
+                        <span>운영진 퀵 설정</span>
+                        <a th:href="@{/manager/team}" class="more-link">관리</a>
+                    </div>
+                    <div class="team-avatars-dummy">
+                        <div class="mini-user-circle">👤</div>
+                        <div class="mini-user-circle">👤</div>
+                        <div class="mini-user-circle">👤</div>
+                    </div>
+                </div>
+
+                <div class="manager-sub-card memo-card">
+                    <h4>매니저 메모 공유</h4>
+                    <textarea placeholder="다른 매니저들과 공유할 메모를 남겨주세요..."></textarea>
+                    <button class="btn-primary btn-sm block-btn">메모 저장</button>
+                </div>
+            </aside>
+
+        </div>
+    </div>
+
+</div>
+
+<script th:src="@{/js/manager_event.js}"></script>
+</body>
+</html>

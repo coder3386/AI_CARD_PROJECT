@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>비활성화된 명함 - AICard</title>
+    <link rel="stylesheet" as="style" crossorigin
+          href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"/>
+    <link rel="stylesheet" th:href="@{/css/main_style.css}">
+    <link rel="stylesheet" th:href="@{/css/inactivate_style.css}">
+</head>
+<body>
+
+<div class="inactive-page-wrapper">
+    <div class="inactive-card-box">
+        <div class="icon-box-large">
+            📇
+        </div>
+
+        <span class="badge badge-inactive">접근 제한</span>
+
+        <h1>비활성화되어 있는<br><span>명함</span>입니다.</h1>
+
+        <p>
+            요청하신 명함은 현재 소유자에 의해 비활성화되었거나,<br>
+            존재하지 않는 페이지입니다. 명함 소유자에게 다시 문의하시거나<br>
+            아래 버튼을 통해 메인 페이지로 이동해 주세요.
+        </p>
+
+        <div class="hero-btns">
+            <a th:href="@{/}" class="btn-primary">홈으로 이동</a>
+            <a href="/support" class="btn-secondary">고객센터 문의</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
