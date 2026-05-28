@@ -34,11 +34,13 @@
                 <td>
                     <form th:action="@{/manager/rbac/update-role}" method="post" style="margin: 0;">
                         <input type="hidden" name="userId" th:value="${user.id}"/>
-                        <select name="newRole" style="padding: 4px;">
-                            <option value="USER" th:selected="${user.role == 'USER'}">USER</option>
-                            <option value="MANAGER" th:selected="${user.role == 'MANAGER'}">MANAGER</option>
-                            <option value="ADMIN" th:selected="${user.role == 'ADMIN'}">ADMIN</option>
-                        </select>
+                        <label>
+                            <select name="newRole" style="padding: 4px;">
+                                <option value="USER" th:selected="${user.role == 'USER'}">USER</option>
+                                <option value="MANAGER" th:selected="${user.role == 'MANAGER'}">MANAGER</option>
+                                <option value="ADMIN" th:selected="${user.role == 'ADMIN'}">ADMIN</option>
+                            </select>
+                        </label>
                         <button type="submit" style="padding: 4px 8px; cursor: pointer;">변경</button>
                     </form>
                 </td>
