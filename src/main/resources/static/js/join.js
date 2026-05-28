@@ -128,4 +128,3 @@ phoneInput.addEventListener("input", function (e) {
     // 최대 13자리(000-0000-0000)까지만 입력 가능하도록 자르기
     this.value = val.substring(0, 13);
 });
-
