@@ -5,7 +5,49 @@
 <main th:fragment="rbacContent" class="manager-center-view">
     <div class="welcome-card">
         <h2>📈 권한관리</h2>
-        <p>여기는 권한관리 시스템이 표시될 영역입니다. (임시 화면)</p>
+        <p>유저들의 권한을 조회하고 변경할 수 있는 관리자 화면입니다.</p>
+
+        <div th:if="${param.error}" style="color: red; margin-bottom: 15px;">
+            <p th:text="${param.error}"></p>
+        </div>
+
+        <table border="1" style="width: 100%; border-collapse: collapse; text-align: center;">
+            <thead>
+            <tr style="background-color: #f2f2f2;">
+                <th>번호</th>
+                <th>아이디</th>
+                <th>이름</th>
+                <th>이메일</th>
+                <th>현재 권한</th>
+                <th>권한 변경</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="user : ${users}">
+                <td th:text="${user.id}">1</td>
+                <td th:text="${user.loginId}">user01</td>
+                <td th:text="${user.name}">홍길동</td>
+                <td th:text="${user.email}">hong@test.com</td>
+                <td>
+                    <span th:text="${user.role}" style="font-weight: bold; color: blue;">USER</span>
+                </td>
+                <td>
+                    <form th:action="@{/manager/rbac/update-role}" method="post" style="margin: 0;">
+                        <input type="hidden" name="userId" th:value="${user.id}"/>
+                        <select name="newRole" style="padding: 4px;">
+                            <option value="USER" th:selected="${user.role == 'USER'}">USER</option>
+                            <option value="MANAGER" th:selected="${user.role == 'MANAGER'}">MANAGER</option>
+                            <option value="ADMIN" th:selected="${user.role == 'ADMIN'}">ADMIN</option>
+                        </select>
+                        <button type="submit" style="padding: 4px 8px; cursor: pointer;">변경</button>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(users)}">
+                <td colspan="6">등록된 사용자가 없습니다.</td>
+            </tr>
+            </tbody>
+        </table>
     </div>
 </main>
 
