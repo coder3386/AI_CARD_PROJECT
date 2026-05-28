@@ -260,6 +260,8 @@ public class OpenAiCardService {
         return response;
     }
 
+    //일반 텍스트 명함 생성 프롬프트:
+
     private String buildPrompt(BusinessCard card, List<Template> templates, CardCreateRequest request) {
         StringBuilder templateInfo = new StringBuilder();
         for (Template template : templates) {
@@ -404,6 +406,7 @@ public class OpenAiCardService {
         );
     }
 
+    //그림,화면그림 기반 명함 생성 프롬프트:
     private String buildDrawingPrompt(BusinessCard card, CardCreateRequest request) {
         return """
                 Create a custom 860px x 480px digital business card draft using HTML and CSS.
@@ -515,6 +518,7 @@ public class OpenAiCardService {
         );
     }
 
+    //겹침,깨짐 수정용 프롬프트:
     private String buildLayoutFixPrompt(BusinessCard card, String currentHtml, String currentCss) {
         return """
                 Fix only layout problems in this existing 860px x 480px digital business card.

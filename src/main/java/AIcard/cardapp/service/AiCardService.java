@@ -92,7 +92,7 @@ public class AiCardService {
         BusinessCard card = new BusinessCard();
         card.setUserId(userId);
         card.setTemplateId(selectedTemplate.getTemplateId());
-        card.setTitle(defaultText(request.getDisplayName(), "AI 紐낇븿"));
+        card.setTitle(defaultText(request.getDisplayName(), "AI 명함"));
         card.setDisplayName(request.getDisplayName());
         card.setPublicUrl(makePublicUrl());
         card = businessCardRepository.save(card);
@@ -140,7 +140,7 @@ public class AiCardService {
         cardRequest.setGeminiApiKey(request.getGeminiApiKey());
         cardRequest.setDrawingDescription(request.getDrawingDescription());
         cardRequest.setDrawingLayoutJson(request.getDrawingLayoutJson());
-        cardRequest.setDisplayName(defaultValue(request.getDisplayName(), "洹몃┝ 湲곕컲 紐낇븿"));
+        cardRequest.setDisplayName(defaultValue(request.getDisplayName(), "그림 기반 명함"));
         cardRequest.setJobTitle(request.getJobTitle());
         cardRequest.setCompany(request.getCompany());
         cardRequest.setDepartment(request.getDepartment());
@@ -149,8 +149,8 @@ public class AiCardService {
         cardRequest.setPhone(request.getPhone());
         cardRequest.setProfileImage(request.getProfileImage());
         cardRequest.setExtraItems(request.getExtraItems());
-        cardRequest.setMood("洹몃┝ ?먮뒗 ?ㅼ?移?諛곗튂瑜?諛뷀깢?쇰줈 ???쒓컖?곸씤 紐낇븿");
-        cardRequest.setPreferredColor("?ъ슜??洹몃┝ ?ㅻ챸???댁슱由щ뒗 ?됱긽");
+        cardRequest.setMood("그림 또는 스케치 배치를 바탕으로 한 시각적인 명함");
+        cardRequest.setPreferredColor("사용자 그림 설명에 어울리는 색상");
         return generateDrawingCustom(cardRequest, userId);
     }
 
@@ -520,7 +520,7 @@ public class AiCardService {
     }
 
     private String defaultText(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value + " 紐낇븿";
+        return value == null || value.isBlank() ? fallback : value + " 명함";
     }
 
     private String defaultValue(String value, String fallback) {

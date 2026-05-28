@@ -44,6 +44,7 @@
 
                     <a th:href="@{/card/edit}" class="dropdown-item">계정 관리</a>
                     <a th:href="@{/card/settings}" class="dropdown-item">임시텍스트 - 추가 가능</a>
+                    <a th:href="@{/testpage}" class="dropdown-item">[테스트페이지]최종단계에서 지울것</a>
 
                     <hr class="dropdown-divider">
 
@@ -66,7 +67,7 @@
             <h1>혁신적인 명함의<br>새로운 기준을 경험하세요</h1>
             <p>나만의 명함을 생성하고 공유하는 완벽한 솔루션입니다.</p>
             <div class="hero-btns">
-                <a href="#" class="btn-primary large">시작하기</a>
+                <a th:href="@{/cards/select-type}" class="btn-primary large">시작하기</a>
                 <a th:href="@{/viewDemo}" class="btn-secondary large">데모 보기</a>
             </div>
         </div>
