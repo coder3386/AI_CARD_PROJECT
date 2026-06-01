@@ -1,17 +1,27 @@
 package AIcard.cardapp.controller;
 
+import AIcard.cardapp.DTO.ActiveUserDTO;
+import AIcard.cardapp.entity.UsersMember;
+import AIcard.cardapp.service.ManagerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import java.security.Principal;
+import java.util.List;
 
 @Controller
 @Slf4j
 @RequestMapping("/manager")
 @RequiredArgsConstructor
 public class ManagerController {
+
+    private final ManagerService managerService;
 
     @GetMapping({"", "/"})
     public String manager(Model model) {
@@ -33,8 +43,31 @@ public class ManagerController {
     public String rbacManagement(Model model) {
         model.addAttribute("activeMenu", "rbac");
         model.addAttribute("currentMenuName", "운영자 권한 관리 (RBAC)");
+        List<UsersMember> users = managerService.getAllUsers();
+        model.addAttribute("users", users);
         model.addAttribute("contentFragment", "Manager/fragments/rbac :: rbacContent");
         return "manager/manager";
+    }
+
+    @PostMapping("/rbac/update-role")
+    public String updateRole(@RequestParam("userId") Long userId,
+                             @RequestParam("newRole") String newRole,
+                             Principal principal) {
+
+        // 인증 정보가 없다면 (로그인 안 됨)
+        if (principal == null) {
+            return "redirect:/login";
+        }
+
+        String loggedInManagerId = principal.getName();
+
+        try {
+            managerService.changeUserRole(userId, newRole, loggedInManagerId);
+        } catch (Exception e) {
+            return "redirect:/manager/rbac?error=" + e.getMessage();
+        }
+
+        return "redirect:/manager/rbac";
     }
 
     // 2. 활동 로그 확인 (Manager Activity Log)
@@ -60,6 +93,11 @@ public class ManagerController {
     public String sessionLookup(Model model) {
         model.addAttribute("activeMenu", "session");
         model.addAttribute("currentMenuName", "사용자 세션 조회");
+
+        // ★ 현재 접속 중인 세션 유저 DTO 리스트를 조회해서 모델에 주입
+        List<ActiveUserDTO> activeUsers = managerService.getActiveUsers();
+        model.addAttribute("activeUsers", activeUsers);
+
         model.addAttribute("contentFragment", "Manager/fragments/session :: sessionContent");
         return "manager/manager";
     }

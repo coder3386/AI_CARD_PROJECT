@@ -6,8 +6,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
+import org.springframework.security.core.session.SessionRegistry;
+import org.springframework.security.core.session.SessionRegistryImpl;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 @Configuration
 @EnableWebSecurity
@@ -23,6 +26,16 @@ public class SecurityConfig {
     public WebSecurityCustomizer webSecurityCustomizer() {
         return (web) -> web.ignoring()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico");
+    }
+
+    @Bean
+    public SessionRegistry sessionRegistry() {
+        return new SessionRegistryImpl();
+    }
+
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
     }
 
     // 2. HTTP 보안 설정 (핵심)
@@ -56,6 +69,12 @@ public class SecurityConfig {
                         .usernameParameter("username") // HTML의 name="username"과 일치 (이미 기본값이긴 함)
                         .defaultSuccessUrl("/main", true) // 로그인 성공 시 갈 곳
                         .permitAll()
+                )
+
+                //세션 설정
+                .sessionManagement(session -> session
+                        .maximumSessions(-1) // 제한 없음 혹은 원하는 제한 수
+                        .sessionRegistry(sessionRegistry()) // 세션 레지스트리 등록
                 )
 
                 // D. 로그아웃 설정
