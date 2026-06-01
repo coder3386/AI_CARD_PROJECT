@@ -4,6 +4,7 @@ import AIcard.cardapp.DTO.PrincipalDetails;
 import AIcard.cardapp.entity.UsersMember;
 import AIcard.cardapp.repository.UsersMemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 public class PrincipalDetailsService implements UserDetailsService {
     private final UsersMemberRepository memberRepository;
 
+    @NullMarked
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         // DB의 login_id 컬럼에서 사용자를 찾음
