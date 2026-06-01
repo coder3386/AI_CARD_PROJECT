@@ -35,7 +35,7 @@ public class ManagerController {
         model.addAttribute("currentMenuName", "대시보드");
         model.addAttribute("pageTitle", "AICARD 매니저 시스템 - 대시보드");
         model.addAttribute("contentFragment", "Manager/fragments/dashboard :: dashboardContent");
-        return "manager/manager"; // 소문자로 통일
+        return "Manager/Manager"; // 소문자로 통일
     }
 
     // 1. 운영자 권한 관리 (RBAC)
@@ -46,7 +46,7 @@ public class ManagerController {
         List<UsersMember> users = managerService.getAllUsers();
         model.addAttribute("users", users);
         model.addAttribute("contentFragment", "Manager/fragments/rbac :: rbacContent");
-        return "manager/manager";
+        return "Manager/Manager";
     }
 
     @PostMapping("/rbac/update-role")
@@ -64,10 +64,10 @@ public class ManagerController {
         try {
             managerService.changeUserRole(userId, newRole, loggedInManagerId);
         } catch (Exception e) {
-            return "redirect:/manager/rbac?error=" + e.getMessage();
+            return "redirect:/Manager/rbac?error=" + e.getMessage();
         }
 
-        return "redirect:/manager/rbac";
+        return "redirect:/Manager/rbac";
     }
 
     // 2. 활동 로그 확인 (Manager Activity Log)
@@ -76,7 +76,7 @@ public class ManagerController {
         model.addAttribute("activeMenu", "managerLog");
         model.addAttribute("currentMenuName", "활동 로그 확인 (Manager)");
         model.addAttribute("contentFragment", "Manager/fragments/manager_log :: logContent");
-        return "manager/manager";
+        return "Manager/Manager";
     }
 
     // 3. 활동 로그 확인 (User Activity Log)
@@ -85,7 +85,7 @@ public class ManagerController {
         model.addAttribute("activeMenu", "userLog");
         model.addAttribute("currentMenuName", "활동 로그 확인 (User)");
         model.addAttribute("contentFragment", "Manager/fragments/user_log :: logContent");
-        return "manager/manager";
+        return "Manager/Manager";
     }
 
     // 4. 사용자 세션 조회
@@ -99,7 +99,7 @@ public class ManagerController {
         model.addAttribute("activeUsers", activeUsers);
 
         model.addAttribute("contentFragment", "Manager/fragments/session :: sessionContent");
-        return "manager/manager";
+        return "Manager/Manager";
     }
 
     // 5. 커뮤니케이션 도구
@@ -108,7 +108,7 @@ public class ManagerController {
         model.addAttribute("activeMenu", "communication");
         model.addAttribute("currentMenuName", "커뮤니케이션 도구");
         model.addAttribute("contentFragment", "Manager/fragments/comm :: commContent");
-        return "manager/manager";
+        return "Manager/Manager";
     }
 
     // 6. 문의 대답 페이지
@@ -117,7 +117,7 @@ public class ManagerController {
         model.addAttribute("activeMenu", "qna");
         model.addAttribute("currentMenuName", "문의 대답 페이지");
         model.addAttribute("contentFragment", "Manager/fragments/qna :: qnaContent");
-        return "manager/manager";
+        return "Manager/Manager";
     }
 
     // 7. 전체공지 페이지
@@ -126,7 +126,7 @@ public class ManagerController {
         model.addAttribute("activeMenu", "notice");
         model.addAttribute("currentMenuName", "전체공지 페이지");
         model.addAttribute("contentFragment", "Manager/fragments/notice :: noticeContent");
-        return "manager/manager";
+        return "Manager/Manager";
     }
 
     // 8. 통계
@@ -135,6 +135,6 @@ public class ManagerController {
         model.addAttribute("activeMenu", "stats");
         model.addAttribute("currentMenuName", "통계");
         model.addAttribute("contentFragment", "Manager/fragments/stats :: statsContent");
-        return "manager/manager";
+        return "Manager/Manager";
     }
 }
