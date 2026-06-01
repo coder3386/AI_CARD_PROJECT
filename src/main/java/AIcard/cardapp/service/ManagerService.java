@@ -1,12 +1,17 @@
 package AIcard.cardapp.service;
 
+import AIcard.cardapp.DTO.ActiveUserDTO;
+import AIcard.cardapp.DTO.PrincipalDetails;
 import AIcard.cardapp.entity.UsersMember;
 import AIcard.cardapp.repository.UsersMemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -14,6 +19,7 @@ import java.util.List;
 public class ManagerService {
 
     private final UsersMemberRepository usersMemberRepository;
+    private final SessionRegistry sessionRegistry;
 
     // 전체 유저 목록 조회
     public List<UsersMember> getAllUsers() {
@@ -37,5 +43,29 @@ public class ManagerService {
                 .orElseThrow(() -> new IllegalArgumentException("대상을 찾을 수 없습니다."));
 
         targetUser.updateRole(newRole);
+    }
+
+    // 현재 접속 중인 사용자 세션 조회
+    public List<ActiveUserDTO> getActiveUsers() {
+        return sessionRegistry.getAllPrincipals().stream()
+                // 만료되지 않은 세션만 필터링
+                .filter(principal -> !sessionRegistry.getAllSessions(principal, false).isEmpty())
+                .map(principal -> {
+                    // 우리가 만든 PrincipalDetails 타입인지 확인
+                    if (principal instanceof PrincipalDetails) {
+                        UsersMember user = ((PrincipalDetails) principal).getUsersMember();
+                        return ActiveUserDTO.builder()
+                                .userId(user.getId())
+                                .loginId(user.getLoginId())
+                                .name(user.getName())
+                                .email(user.getEmail())
+                                .phone(user.getPhone())
+                                .role(user.getRole())
+                                .build();
+                    }
+                    return null;
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
     }
 }

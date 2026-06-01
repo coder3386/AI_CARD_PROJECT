@@ -1,5 +1,8 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <link rel="stylesheet" th:href="@{/css/fragments.css}">
+</head>
 <body>
 
 <main th:fragment="rbacContent" class="manager-center-view">
@@ -7,13 +10,13 @@
         <h2>📈 권한관리</h2>
         <p>유저들의 권한을 조회하고 변경할 수 있는 관리자 화면입니다.</p>
 
-        <div th:if="${param.error}" style="color: red; margin-bottom: 15px;">
+        <div th:if="${param.error}" class="error-message-box">
             <p th:text="${param.error}"></p>
         </div>
 
-        <table border="1" style="width: 100%; border-collapse: collapse; text-align: center;">
+        <table class="manager-table">
             <thead>
-            <tr style="background-color: #f2f2f2;">
+            <tr>
                 <th>번호</th>
                 <th>아이디</th>
                 <th>이름</th>
@@ -29,23 +32,23 @@
                 <td th:text="${user.name}">홍길동</td>
                 <td th:text="${user.email}">hong@test.com</td>
                 <td>
-                    <span th:text="${user.role}" style="font-weight: bold; color: blue;">USER</span>
+                    <span th:if="${user.role == 'USER'}" class="badge badge-user">USER</span>
+                    <span th:if="${user.role == 'MANAGER'}" class="badge badge-manager">MANAGER</span>
+                    <span th:if="${user.role == 'ADMIN'}" class="badge badge-admin">ADMIN</span>
                 </td>
                 <td>
                     <form th:action="@{/manager/rbac/update-role}" method="post" style="margin: 0;">
                         <input type="hidden" name="userId" th:value="${user.id}"/>
-                        <label>
-                            <select name="newRole" style="padding: 4px;">
-                                <option value="USER" th:selected="${user.role == 'USER'}">USER</option>
-                                <option value="MANAGER" th:selected="${user.role == 'MANAGER'}">MANAGER</option>
-                                <option value="ADMIN" th:selected="${user.role == 'ADMIN'}">ADMIN</option>
-                            </select>
-                        </label>
-                        <button type="submit" style="padding: 4px 8px; cursor: pointer;">변경</button>
+                        <select name="newRole" class="manager-select">
+                            <option value="USER" th:selected="${user.role == 'USER'}">USER</option>
+                            <option value="MANAGER" th:selected="${user.role == 'MANAGER'}">MANAGER</option>
+                            <option value="ADMIN" th:selected="${user.role == 'ADMIN'}">ADMIN</option>
+                        </select>
+                        <button type="submit" class="btn-submit-yellow">변경</button>
                     </form>
                 </td>
             </tr>
-            <tr th:if="${#lists.isEmpty(users)}">
+            <tr th:if="${#lists.isEmpty(users)}" class="empty-row">
                 <td colspan="6">등록된 사용자가 없습니다.</td>
             </tr>
             </tbody>

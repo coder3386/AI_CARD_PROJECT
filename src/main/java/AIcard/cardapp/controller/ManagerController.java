@@ -1,5 +1,6 @@
 package AIcard.cardapp.controller;
 
+import AIcard.cardapp.DTO.ActiveUserDTO;
 import AIcard.cardapp.entity.UsersMember;
 import AIcard.cardapp.service.ManagerService;
 import lombok.RequiredArgsConstructor;
@@ -57,7 +58,7 @@ public class ManagerController {
         if (principal == null) {
             return "redirect:/login";
         }
-        
+
         String loggedInManagerId = principal.getName();
 
         try {
@@ -92,6 +93,11 @@ public class ManagerController {
     public String sessionLookup(Model model) {
         model.addAttribute("activeMenu", "session");
         model.addAttribute("currentMenuName", "사용자 세션 조회");
+
+        // ★ 현재 접속 중인 세션 유저 DTO 리스트를 조회해서 모델에 주입
+        List<ActiveUserDTO> activeUsers = managerService.getActiveUsers();
+        model.addAttribute("activeUsers", activeUsers);
+
         model.addAttribute("contentFragment", "Manager/fragments/session :: sessionContent");
         return "manager/manager";
     }
