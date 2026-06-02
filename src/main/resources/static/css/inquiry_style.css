@@ -1,0 +1,72 @@
+/* 문의 내역 전체를 감싸는 영역 */
+.inquiry-list-container {
+    max-width: 900px;
+    margin: 40px auto;
+    padding: 30px;
+    background-color: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    font-family: 'Pretendard', sans-serif; /* 메인 페이지 폰트와 통일 */
+}
+
+.inquiry-list-container h2 {
+    margin-bottom: 25px;
+    font-size: 1.5rem;
+    color: #333333;
+    border-bottom: 2px solid #222;
+    padding-bottom: 10px;
+}
+
+/* 테이블(게시판) 뼈대 스타일 */
+.inquiry-list-container table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.inquiry-list-container th,
+.inquiry-list-container td {
+    padding: 16px;
+    border-bottom: 1px solid #e9ecef;
+    text-align: left;
+    vertical-align: top;
+}
+
+.inquiry-list-container th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+}
+
+/* 상태 표시 뱃지 (대기중 / 완료) */
+.badge-waiting {
+    display: inline-block;
+    padding: 6px 12px;
+    background-color: #fff3cd;
+    color: #856404;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-completed {
+    display: inline-block;
+    padding: 6px 12px;
+    background-color: #d1e7dd;
+    color: #0f5132;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* 관리자 답변 내용 박스 */
+.answer-box {
+    margin-top: 12px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-left: 4px solid #0d6efd;
+    border-radius: 4px;
+    font-size: 0.95rem;
+    color: #555;
+    line-height: 1.5;
+}
