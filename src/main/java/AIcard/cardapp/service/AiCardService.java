@@ -36,6 +36,13 @@ public class AiCardService {
 
     private static final Long TEST_USER_ID = 1L;
     private static final int MAX_EXTRA_ITEMS = 8;
+    private static final int MAX_DISPLAY_NAME_LENGTH = 15;
+    private static final int MAX_JOB_TITLE_LENGTH = 20;
+    private static final int MAX_COMPANY_LENGTH = 25;
+    private static final int MAX_DEPARTMENT_LENGTH = 25;
+    private static final int MAX_INTRO_LENGTH = 50;
+    private static final int MAX_EMAIL_LENGTH = 50;
+    private static final int MAX_PHONE_LENGTH = 20;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private final BusinessCardRepository businessCardRepository;
@@ -83,6 +90,7 @@ public class AiCardService {
         if (userId == null) {
             throw new IllegalStateException("濡쒓렇???ъ슜???뺣낫瑜?李얠쓣 ???놁뒿?덈떎.");
         }
+        validatePersonalInfo(request);
         List<Template> templates = templateRepository.findByActiveTrue();
         if (templates.isEmpty()) {
             throw new IllegalStateException("?ъ슜 媛?ν븳 紐낇븿 ?쒗뵆由우씠 ?놁뒿?덈떎.");
@@ -155,6 +163,7 @@ public class AiCardService {
     }
 
     private Long generateDrawingCustom(CardCreateRequest cardRequest, Long userId) {
+        validatePersonalInfo(cardRequest);
         Template drawingTemplate = getDrawingCustomTemplate();
 
         BusinessCard card = new BusinessCard();
@@ -193,6 +202,7 @@ public class AiCardService {
 
     @Transactional
     public void updateText(Long cardId, CardUpdateTextRequest request) {
+        validatePersonalInfo(request);
         BusinessCard card = getCard(cardId);
         card.setDisplayName(request.getDisplayName());
         businessCardRepository.save(card);
@@ -204,6 +214,7 @@ public class AiCardService {
 
     @Transactional
     public void fixLayout(Long cardId, CardUpdateTextRequest request) {
+        validatePersonalInfo(request);
         BusinessCard card = getCard(cardId);
         card.setDisplayName(request.getDisplayName());
         businessCardRepository.save(card);
@@ -267,6 +278,21 @@ public class AiCardService {
     }
 
     @Transactional(readOnly = true)
+    public boolean isLatestAiResultFallback(Long cardId) {
+        return cardAiResultRepository.findTopByCardIdOrderByCreatedAtDesc(cardId)
+                .map(result -> "fallback".equals(result.getModelName()))
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
+    public String getLatestAiResultReason(Long cardId) {
+        return cardAiResultRepository.findTopByCardIdOrderByCreatedAtDesc(cardId)
+                .map(CardAiResult::getAiReason)
+                .filter(reason -> !reason.isBlank())
+                .orElse("AI 생성에 실패하여 기본 템플릿을 준비했습니다.");
+    }
+
+    @Transactional(readOnly = true)
     public BusinessCardDetail getProfileImageDetail(Long cardId) {
         BusinessCardDetail detail = businessCardDetailRepository.findById(cardId)
                 .orElseThrow(() -> new IllegalArgumentException("프로필 이미지가 없습니다. cardId=" + cardId));
@@ -278,11 +304,16 @@ public class AiCardService {
 
     @Transactional
     public String readPublicCard(String publicUrl) {
+        return readPublicCard(publicUrl, null);
+    }
+
+    @Transactional
+    public String readPublicCard(String publicUrl, Long viewerUserId) {
         BusinessCard card = businessCardRepository.findByPublicUrl(publicUrl)
                 .orElseThrow(() -> new IllegalArgumentException("怨듦컻 紐낇븿??李얠쓣 ???놁뒿?덈떎."));
         businessCardDetailRepository.findById(card.getCardId()).ifPresent(card::setDetail);
 
-        if (!"ACTIVE".equals(card.getStatus()) || !Boolean.TRUE.equals(card.getPublicCard())) {
+        if (!canViewCard(card, viewerUserId)) {
             throw new IllegalStateException("怨듦컻?섏? ?딆? 紐낇븿?낅땲??");
         }
 
@@ -308,6 +339,39 @@ public class AiCardService {
             exported = htmlExportService.exportCard(card.getCardId());
         }
         return exported;
+    }
+
+    private boolean canViewCard(BusinessCard card, Long viewerUserId) {
+        if (viewerUserId != null && viewerUserId.equals(card.getUserId())) {
+            return true;
+        }
+        return "ACTIVE".equals(card.getStatus()) && Boolean.TRUE.equals(card.getPublicCard());
+    }
+
+    private void validatePersonalInfo(CardCreateRequest request) {
+        validateLength("이름", request.getDisplayName(), MAX_DISPLAY_NAME_LENGTH);
+        validateLength("직무/직책", request.getJobTitle(), MAX_JOB_TITLE_LENGTH);
+        validateLength("회사/소속", request.getCompany(), MAX_COMPANY_LENGTH);
+        validateLength("부서/전공", request.getDepartment(), MAX_DEPARTMENT_LENGTH);
+        validateLength("자기소개", request.getIntro(), MAX_INTRO_LENGTH);
+        validateLength("이메일", request.getEmail(), MAX_EMAIL_LENGTH);
+        validateLength("전화번호", request.getPhone(), MAX_PHONE_LENGTH);
+    }
+
+    private void validatePersonalInfo(CardUpdateTextRequest request) {
+        validateLength("이름", request.getDisplayName(), MAX_DISPLAY_NAME_LENGTH);
+        validateLength("직무/직책", request.getJobTitle(), MAX_JOB_TITLE_LENGTH);
+        validateLength("회사/소속", request.getCompany(), MAX_COMPANY_LENGTH);
+        validateLength("부서/전공", request.getDepartment(), MAX_DEPARTMENT_LENGTH);
+        validateLength("자기소개", request.getIntro(), MAX_INTRO_LENGTH);
+        validateLength("이메일", request.getEmail(), MAX_EMAIL_LENGTH);
+        validateLength("전화번호", request.getPhone(), MAX_PHONE_LENGTH);
+    }
+
+    private void validateLength(String label, String value, int maxLength) {
+        if (value != null && value.length() > maxLength) {
+            throw new IllegalStateException(label + "은(는) " + maxLength + "자 이하로 입력해주세요.");
+        }
     }
 
     private BusinessCardDetail saveDetail(Long cardId, CardCreateRequest request) {

@@ -259,6 +259,39 @@
     gap: 12px;
 }
 
+.ai-fallback-panel {
+    display: grid;
+    gap: 20px;
+}
+
+.ai-fallback-summary {
+    display: grid;
+    gap: 6px;
+    border: 1px solid #d9e2ef;
+    border-radius: 8px;
+    padding: 16px;
+    background: #f8fafc;
+}
+
+.ai-fallback-summary strong {
+    color: #172033;
+    font-size: 17px;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.ai-fallback-summary span {
+    color: #64748b;
+    font-size: 13px;
+    word-break: break-all;
+}
+
+.ai-fallback-actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
 .ai-preview-shell {
     width: min(1320px, calc(100% - 36px));
     min-height: calc(100vh - 56px);
@@ -471,6 +504,7 @@
 
 .my-card-visibility button,
 .my-card-preview-link,
+.my-card-qr-button,
 .my-card-delete-button {
     min-height: 38px;
     border: 0;
@@ -505,6 +539,12 @@
     background: #e2e8f0;
 }
 
+.my-card-qr-button {
+    border-radius: 6px;
+    color: #0f766e;
+    background: #ccfbf1;
+}
+
 .my-card-delete-button {
     border-radius: 6px;
     color: #b91c1c;
@@ -531,6 +571,72 @@
     text-decoration: none;
 }
 
+.my-card-qr-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.48);
+}
+
+.my-card-qr-modal[hidden] {
+    display: none;
+}
+
+.my-card-qr-dialog {
+    position: relative;
+    width: min(360px, 100%);
+    display: grid;
+    gap: 14px;
+    justify-items: center;
+    border: 1px solid #d9e2ef;
+    border-radius: 8px;
+    padding: 28px;
+    color: #172033;
+    background: #ffffff;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+    text-align: center;
+}
+
+.my-card-qr-dialog h2 {
+    max-width: 100%;
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.my-card-qr-dialog img {
+    width: 240px;
+    height: 240px;
+    border: 1px solid #d9e2ef;
+    border-radius: 8px;
+    background: #ffffff;
+}
+
+.my-card-qr-dialog a {
+    color: #0f766e;
+    font-size: 13px;
+    font-weight: 800;
+    text-decoration: none;
+}
+
+.my-card-qr-close {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    color: #334155;
+    background: #ffffff;
+    font-weight: 900;
+    cursor: pointer;
+}
+
 @media (max-width: 980px) {
     .ai-preview-shell {
         grid-template-columns: 1fr;
@@ -543,6 +649,10 @@
 
 @media (max-width: 680px) {
     .ai-card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ai-fallback-actions {
         grid-template-columns: 1fr;
     }
 
@@ -572,6 +682,7 @@
     }
 
     .my-card-preview-link,
+    .my-card-qr-button,
     .my-card-delete-button {
         width: 100%;
         box-sizing: border-box;

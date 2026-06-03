@@ -6,7 +6,10 @@ import AIcard.cardapp.DTO.CardUpdateTextRequest;
 import AIcard.cardapp.entity.BusinessCard;
 import AIcard.cardapp.entity.BusinessCardDetail;
 import AIcard.cardapp.service.AiCardService;
+import AIcard.cardapp.service.CardQrService;
 import AIcard.cardapp.service.CurrentUserService;
+import AIcard.cardapp.service.PublicCardUrlService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -18,15 +21,26 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.net.URI;
+
 @Controller
 public class AiCardController {
 
     private final AiCardService aiCardService;
+    private final CardQrService cardQrService;
     private final CurrentUserService currentUserService;
+    private final PublicCardUrlService publicCardUrlService;
 
-    public AiCardController(AiCardService aiCardService, CurrentUserService currentUserService) {
+    public AiCardController(
+            AiCardService aiCardService,
+            CardQrService cardQrService,
+            CurrentUserService currentUserService,
+            PublicCardUrlService publicCardUrlService
+    ) {
         this.aiCardService = aiCardService;
+        this.cardQrService = cardQrService;
         this.currentUserService = currentUserService;
+        this.publicCardUrlService = publicCardUrlService;
     }
 
     @GetMapping("/cards/select-type")
@@ -45,7 +59,11 @@ public class AiCardController {
     }
 
     @PostMapping("/cards/generate")
-    public String generate(@ModelAttribute CardCreateRequest request, RedirectAttributes redirectAttributes) {
+    public String generate(
+            @ModelAttribute CardCreateRequest request,
+            RedirectAttributes redirectAttributes,
+            HttpServletRequest httpRequest
+    ) {
         try {
             validateAtLeastOneApiKey(request.getApiKey(), request.getGeminiApiKey());
             Long userId = requireCurrentUserId(redirectAttributes);
@@ -53,6 +71,10 @@ public class AiCardController {
                 return "redirect:/card/login";
             }
             Long cardId = aiCardService.generate(request, userId);
+            createQrCode(cardId, httpRequest);
+            if (aiCardService.isLatestAiResultFallback(cardId)) {
+                return "redirect:/cards/" + cardId + "/ai-fallback?retryType=text";
+            }
             return "redirect:/cards/" + cardId + "/preview";
         } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
@@ -67,7 +89,11 @@ public class AiCardController {
     }
 
     @PostMapping("/cards/drawing/generate")
-    public String generateDrawing(@ModelAttribute CardDrawingCreateRequest request, RedirectAttributes redirectAttributes) {
+    public String generateDrawing(
+            @ModelAttribute CardDrawingCreateRequest request,
+            RedirectAttributes redirectAttributes,
+            HttpServletRequest httpRequest
+    ) {
         try {
             validateAtLeastOneApiKey(request.getApiKey(), request.getGeminiApiKey());
             Long userId = requireCurrentUserId(redirectAttributes);
@@ -75,6 +101,10 @@ public class AiCardController {
                 return "redirect:/card/login";
             }
             Long cardId = aiCardService.generateDrawing(request, userId);
+            createQrCode(cardId, httpRequest);
+            if (aiCardService.isLatestAiResultFallback(cardId)) {
+                return "redirect:/cards/" + cardId + "/ai-fallback?retryType=drawing";
+            }
             return "redirect:/cards/drawing/" + cardId + "/preview";
         } catch (IllegalStateException ex) {
             redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
@@ -95,9 +125,18 @@ public class AiCardController {
     }
 
     @PostMapping("/cards/{cardId}/update-text")
-    public String updateText(@PathVariable Long cardId, @ModelAttribute CardUpdateTextRequest request) {
-        aiCardService.updateText(cardId, request);
-        return "redirect:/cards/" + cardId + "/preview";
+    public String updateText(
+            @PathVariable Long cardId,
+            @ModelAttribute CardUpdateTextRequest request,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            aiCardService.updateText(cardId, request);
+            return "redirect:/cards/" + cardId + "/preview";
+        } catch (IllegalStateException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+            return "redirect:/cards/" + cardId + "/preview";
+        }
     }
 
     @PostMapping("/cards/{cardId}/fix-layout")
@@ -137,19 +176,33 @@ public class AiCardController {
     }
 
     @GetMapping("/public/card/{publicUrl}")
-    public ResponseEntity<String> publicCard(@PathVariable String publicUrl) {
+    public ResponseEntity<String> publicCard(@PathVariable String publicUrl, HttpServletRequest request) {
         try {
-            String html = aiCardService.readPublicCard(publicUrl);
+            Long viewerUserId = currentUserService.getCurrentUserIdOrNull();
+            String html = aiCardService.readPublicCard(publicUrl, viewerUserId);
             return ResponseEntity.ok()
                     .contentType(MediaType.TEXT_HTML)
                     .body(html);
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.notFound().build();
         } catch (IllegalStateException ex) {
-            return ResponseEntity.status(403)
-                    .contentType(MediaType.TEXT_PLAIN)
-                    .body(ex.getMessage());
+            return ResponseEntity.status(302)
+                    .location(URI.create(request.getContextPath() + "/dont"))
+                    .build();
         }
+    }
+
+    @GetMapping("/cards/{cardId}/ai-fallback")
+    public String aiFallbackNotice(
+            @PathVariable Long cardId,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "text") String retryType,
+            Model model
+    ) {
+        BusinessCard card = aiCardService.getCard(cardId);
+        model.addAttribute("card", card);
+        model.addAttribute("failureReason", aiCardService.getLatestAiResultReason(cardId));
+        model.addAttribute("retryType", retryType);
+        return "cards/ai-fallback";
     }
 
     private void addPreviewModel(Long cardId, Model model) {
@@ -157,6 +210,12 @@ public class AiCardController {
         model.addAttribute("card", card);
         model.addAttribute("extraItems", aiCardService.getExtraItems(cardId));
         model.addAttribute("previewDocument", aiCardService.getPreviewDocument(cardId));
+    }
+
+    private void createQrCode(Long cardId, HttpServletRequest request) {
+        BusinessCard card = aiCardService.getCard(cardId);
+        String targetUrl = publicCardUrlService.buildPublicCardUrl(request, card.getPublicUrl());
+        cardQrService.createOrUpdateQr(cardId, targetUrl);
     }
 
     private void validateAtLeastOneApiKey(String openAiApiKey, String geminiApiKey) {
