@@ -36,6 +36,10 @@ public class UsersMember {
         this.phone = newPhone;
     }
 
+    public void updateRole(String newRole) {
+        this.role = newRole;
+    }
+
     @Builder
     public UsersMember(String loginId, String password, String name, String email, String phone, String role) {
         this.loginId = loginId;

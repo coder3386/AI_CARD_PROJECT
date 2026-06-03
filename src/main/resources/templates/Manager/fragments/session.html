@@ -1,11 +1,48 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <link rel="stylesheet" th:href="@{/css/fragments.css}">
+</head>
 <body>
 
 <main th:fragment="sessionContent" class="manager-center-view">
     <div class="welcome-card">
-        <h2>📈 세션조회</h2>
-        <p>여기는 세션 조회시스템이 표시될 영역입니다. (임시 화면)</p>
+        <h2>👥 현재 접속중인 사용자 세션 조회</h2>
+        <p>실시간으로 시스템에 로그인하여 이용 중인 사용자 목록입니다.</p>
+
+        <table class="manager-table">
+            <thead>
+            <tr>
+                <th>User ID</th>
+                <th>Login ID</th>
+                <th>이름</th>
+                <th>이메일</th>
+                <th>전화번호</th>
+                <th>권한(Role)</th>
+                <th>상태</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="user : ${activeUsers}">
+                <td th:text="${user.userId}">1</td>
+                <td th:text="${user.loginId}">user01</td>
+                <td th:text="${user.name}">홍길동</td>
+                <td th:text="${user.email}">hong@test.com</td>
+                <td th:text="${user.phone}">010-1234-5678</td>
+                <td>
+                    <span th:if="${user.role == 'USER'}" class="badge badge-user">USER</span>
+                    <span th:if="${user.role == 'MANAGER'}" class="badge badge-manager">MANAGER</span>
+                    <span th:if="${user.role == 'ADMIN'}" class="badge badge-admin">ADMIN</span>
+                </td>
+                <td>
+                    <span class="status-online">● 접속중</span>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(activeUsers)}" class="empty-row">
+                <td colspan="7">현재 접속 중인 사용자가 없습니다.</td>
+            </tr>
+            </tbody>
+        </table>
     </div>
 </main>
 
