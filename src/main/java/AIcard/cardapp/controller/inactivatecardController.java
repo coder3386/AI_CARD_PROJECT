@@ -10,7 +10,7 @@ public class inactivatecardController {
 
     @GetMapping("/dont")
     public String terms() {
-        log.info("비활성화 명함 페이지로 이동?");
+        log.debug("비활성화 명함 페이지로 이동?");
         return "CardPage/InActivatePage";
     }
 

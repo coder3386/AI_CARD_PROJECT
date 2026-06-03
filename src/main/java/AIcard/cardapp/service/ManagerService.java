@@ -5,6 +5,7 @@ import AIcard.cardapp.DTO.PrincipalDetails;
 import AIcard.cardapp.entity.UsersMember;
 import AIcard.cardapp.repository.UsersMemberRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -20,6 +22,7 @@ public class ManagerService {
 
     private final UsersMemberRepository usersMemberRepository;
     private final SessionRegistry sessionRegistry;
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger("MANAGER_LOGGER");
 
     // 전체 유저 목록 조회
     public List<UsersMember> getAllUsers() {
@@ -35,6 +38,7 @@ public class ManagerService {
 
         // 2. 권한 체크: MANAGER나 ADMIN이 아니면 예외 발생
         if (!"ADMIN".equals(admin.getRole()) && !"MANAGER".equals(admin.getRole())) {
+            log.warn("[MGR-WARN]|권한 부족 사용자의 권한 변경 시도 발견 - 요청자 ID: {}, 대상 유저 PK: {}", adminLoginId, targetUserId);
             throw new SecurityException("권한 변경 자격이 없습니다. (MANAGER 또는 ADMIN만 가능)");
         }
 
@@ -42,7 +46,16 @@ public class ManagerService {
         UsersMember targetUser = usersMemberRepository.findById(targetUserId)
                 .orElseThrow(() -> new IllegalArgumentException("대상을 찾을 수 없습니다."));
 
+        String oldRole = targetUser.getRole();
         targetUser.updateRole(newRole);
+
+        log.info("[MGR-ACTION]|관리자(ID: {})가 유저(ID: {}, 이름: {})의 권한을 [{}]에서 [{}]로 변경 완료함.",
+                admin.getLoginId(),
+                targetUser.getLoginId(),
+                targetUser.getName(),
+                oldRole,
+                newRole
+        );
     }
 
     // 현재 접속 중인 사용자 세션 조회
