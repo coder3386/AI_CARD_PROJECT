@@ -10,13 +10,13 @@ public class PolicyController {
 
     @GetMapping("/terms")
     public String terms() {
-        log.info("이용약관으로 이동?");
+        log.debug("이용약관으로 이동?");
         return "policy/terms";
     }
 
     @GetMapping("/privacypolicy")
     public String privacypolicy() {
-        log.info("개인정보처리방침으로 이동?");
+        log.debug("개인정보처리방침으로 이동?");
         return "policy/privacypolicy";
     }
 }

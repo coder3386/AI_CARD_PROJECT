@@ -1,7 +1,9 @@
 package AIcard.cardapp.controller;
 
 import AIcard.cardapp.DTO.ActiveUserDTO;
+import AIcard.cardapp.DTO.LogResponseDTO;
 import AIcard.cardapp.entity.UsersMember;
+import AIcard.cardapp.service.ManagerLogService;
 import AIcard.cardapp.service.ManagerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +25,7 @@ import java.util.List;
 public class ManagerController {
 
     private final ManagerService managerService;
+    private final ManagerLogService logService;
 
     @GetMapping({"", "/"})
     public String manager(Model model) {
@@ -65,15 +68,23 @@ public class ManagerController {
         try {
             managerService.changeUserRole(userId, newRole, loggedInManagerId);
         } catch (Exception e) {
-            return "redirect:/Manager/rbac?error=" + e.getMessage();
+            return "redirect:/manager/rbac?error=" + e.getMessage();
         }
 
-        return "redirect:/Manager/rbac";
+        return "redirect:/manager/rbac";
     }
 
     // 2. 활동 로그 확인 (Manager Activity Log)
     @GetMapping("/log/manager")
-    public String managerLog(Model model) {
+    public String managerLog(@RequestParam(value = "logDate", required = false) String logDate, Model model) {
+        List<LogResponseDTO> logList = logService.getParsedLogs("manager", logDate);
+        List<String> archiveDates = logService.getArchiveDates("manager");
+
+        model.addAttribute("logs", logList);
+        model.addAttribute("archiveDates", archiveDates);
+        model.addAttribute("selectedDate", logDate);
+        model.addAttribute("currentType", "manager");
+
         model.addAttribute("activeMenu", "managerLog");
         model.addAttribute("currentMenuName", "활동 로그 확인 (Manager)");
         model.addAttribute("contentFragment", "Manager/fragments/manager_log :: logContent");
@@ -82,10 +93,35 @@ public class ManagerController {
 
     // 3. 활동 로그 확인 (User Activity Log)
     @GetMapping("/log/user")
-    public String userLog(Model model) {
+    public String userLog(@RequestParam(value = "logDate", required = false) String logDate, Model model) {
+        List<LogResponseDTO> logList = logService.getParsedLogs("user", logDate);
+        List<String> archiveDates = logService.getArchiveDates("user");
+
+        model.addAttribute("logs", logList);
+        model.addAttribute("archiveDates", archiveDates);
+        model.addAttribute("selectedDate", logDate);
+        model.addAttribute("currentType", "user");
+
         model.addAttribute("activeMenu", "userLog");
         model.addAttribute("currentMenuName", "활동 로그 확인 (User)");
         model.addAttribute("contentFragment", "Manager/fragments/user_log :: logContent");
+        return "Manager/Manager";
+    }
+
+    // 8. 에러로그
+    @GetMapping("/log/error")
+    public String errorlog(@RequestParam(value = "logDate", required = false) String logDate, Model model) {
+        List<LogResponseDTO> logList = logService.getParsedLogs("error", logDate);
+        List<String> archiveDates = logService.getArchiveDates("error");
+
+        model.addAttribute("logs", logList);
+        model.addAttribute("archiveDates", archiveDates);
+        model.addAttribute("selectedDate", logDate);
+        model.addAttribute("currentType", "error");
+
+        model.addAttribute("activeMenu", "errorLog");
+        model.addAttribute("currentMenuName", "에러로그");
+        model.addAttribute("contentFragment", "Manager/fragments/error_log :: logContent");
         return "Manager/Manager";
     }
 
@@ -127,15 +163,6 @@ public class ManagerController {
         model.addAttribute("activeMenu", "notice");
         model.addAttribute("currentMenuName", "전체공지 페이지");
         model.addAttribute("contentFragment", "Manager/fragments/notice :: noticeContent");
-        return "Manager/Manager";
-    }
-
-    // 8. 통계
-    @GetMapping("/stats")
-    public String statisticsPage(Model model) {
-        model.addAttribute("activeMenu", "stats");
-        model.addAttribute("currentMenuName", "통계");
-        model.addAttribute("contentFragment", "Manager/fragments/stats :: statsContent");
         return "Manager/Manager";
     }
     @GetMapping("/cards")
