@@ -3,68 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <title>관리자 문의 관리</title>
+    <link rel="stylesheet" th:href="@{/css/fragments.css}">
     <link rel="stylesheet" th:href="@{/css/inquiry_style.css}">
 </head>
 <body>
 
-<div th:fragment="qnaContent" class="inquiry-list-container">
-    <h2>전체 사용자 문의 관리</h2>
+<main th:fragment="qnaContent" class="manager-center-view">
+    <div class="welcome-card">
+        <h2>💬 전체 사용자 문의 관리</h2>
+        <p>사용자들이 남긴 문의 내역을 확인하고 답변을 작성할 수 있습니다.</p>
 
-    <table>
-        <thead>
-        <tr>
-            <th>번호</th>
-            <th>작성자ID</th>
-            <th>문의 제목/내용</th>
-            <th>상태</th>
-            <th>답변 관리</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="inquiry : ${allInquiries}">
-            <td th:text="${inquiry.id}">1</td>
-            <td th:text="${inquiry.userId}">1</td>
-            <td>
-                <strong th:text="${inquiry.title}">제목</strong>
-                <div style="margin-top:8px; color:#555;" th:text="${inquiry.content}">문의 내용</div>
-            </td>
-            <td>
-                <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).WAITING}" class="badge-waiting">대기중</span>
-                <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}" class="badge-completed">완료</span>
-            </td>
-            <td>
-                <div th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).WAITING}">
-                    <form th:action="@{/manager/qna/answer}" method="post">
-                        <input type="hidden" name="id" th:value="${inquiry.id}" />
+        <table class="manager-table">
+            <thead>
+            <tr>
+                <th>번호</th>
+                <th>작성자ID</th>
+                <th>문의 제목/내용</th>
+                <th>상태</th>
+                <th>답변 관리</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="inquiry : ${allInquiries}">
+                <td th:text="${inquiry.id}">1</td>
+                <td th:text="${inquiry.userId}">1</td>
+                <td>
+                    <strong th:text="${inquiry.title}">제목</strong>
+                    <div style="margin-top:8px; color:#555;" th:text="${inquiry.content}">문의 내용</div>
+                </td>
+                <td>
+                    <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).WAITING}" class="badge badge-user">대기중</span>
+                    <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}" class="badge badge-manager">완료</span>
+                </td>
+                <td>
+                    <div th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).WAITING}">
+                        <form th:action="@{/manager/qna/answer}" method="post">
+                            <input type="hidden" name="id" th:value="${inquiry.id}" />
 
-                        <textarea name="answer" placeholder="답변을 입력하세요..." required
-                                  style="width:100%; height:60px; margin-bottom:5px;"></textarea>
-                        <button type="submit" style="padding:5px 10px; cursor:pointer;">답변 등록</button>
-                    </form>
-                </div>
+                            <textarea name="answer" placeholder="답변을 입력하세요..." required
+                                      style="width:100%; height:60px; margin-bottom:8px; border:1px solid #ddd; border-radius:4px; padding:8px; box-sizing:border-box;"></textarea>
+                            <button type="submit" style="padding:6px 12px; cursor:pointer; background-color:#2c3e50; color:white; border:none; border-radius:4px; font-weight:bold;">답변 등록</button>
+                        </form>
+                    </div>
 
-                <div th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}" class="answer-box">
-                    <strong style="color:#0d6efd;">내 답변:</strong>
-                    <div th:text="${inquiry.answer}">등록된 답변 내용</div>
-                </div>
-            </td>
-        </tr>
+                    <div th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}" class="answer-box" style="background-color:#f8f9fa; padding:12px; border-radius:6px; border:1px solid #e9ecef;">
+                        <strong style="color:#0d6efd;">내 답변:</strong>
+                        <div th:text="${inquiry.answer}" style="margin-top:5px; color:#333;">등록된 답변 내용</div>
+                    </div>
+                </td>
+            </tr>
 
-        <tr th:if="${#lists.isEmpty(allInquiries)}">
-            <td colspan="5" style="text-align:center;">등록된 문의가 없습니다.</td>
-        </tr>
-        </tbody>
-    </table>
+            <tr th:if="${#lists.isEmpty(allInquiries)}" class="empty-row">
+                <td colspan="5">등록된 문의가 없습니다.</td>
+            </tr>
+            </tbody>
+        </table>
 
-    <script th:inline="javascript">
-        /*<![CDATA[*/
-        var message = /*[[${successMessage}]]*/ null;
-        if (message != null) {
-            alert(message);
-        }
-        /*]]>*/
-    </script>
-</div>
+        <script th:inline="javascript">
+            /*<![CDATA[*/
+            var message = /*[[${successMessage}]]*/ null;
+            if (message != null) {
+                alert(message);
+            }
+            /*]]>*/
+        </script>
+    </div>
+</main>
 
 </body>
 </html>
