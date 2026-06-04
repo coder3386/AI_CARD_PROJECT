@@ -1,8 +1,11 @@
 package AIcard.cardapp.service;
 
 import AIcard.cardapp.DTO.ActiveUserDTO;
+import AIcard.cardapp.DTO.ManagerCardDTO;
 import AIcard.cardapp.DTO.PrincipalDetails;
+import AIcard.cardapp.entity.BusinessCard;
 import AIcard.cardapp.entity.UsersMember;
+import AIcard.cardapp.repository.BusinessCardRepository;
 import AIcard.cardapp.repository.UsersMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.session.SessionRegistry;
@@ -19,11 +22,16 @@ import java.util.stream.Collectors;
 public class ManagerService {
 
     private final UsersMemberRepository usersMemberRepository;
+    private final BusinessCardRepository businessCardRepository;
     private final SessionRegistry sessionRegistry;
 
     // 전체 유저 목록 조회
     public List<UsersMember> getAllUsers() {
         return usersMemberRepository.findAll();
+    }
+
+    public List<ManagerCardDTO> getAllCards() {
+        return businessCardRepository.findManagerCardSummaries();
     }
 
     // 유저 권한 변경 변경 (핵심 로직)
@@ -43,6 +51,16 @@ public class ManagerService {
                 .orElseThrow(() -> new IllegalArgumentException("대상을 찾을 수 없습니다."));
 
         targetUser.updateRole(newRole);
+    }
+
+    @Transactional
+    public String changeCardStatus(Long cardId, String newStatus) {
+        String normalizedStatus = normalizeCardStatus(newStatus);
+        BusinessCard card = businessCardRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("Card not found. cardId=" + cardId));
+
+        card.setStatus(normalizedStatus);
+        return displayCardTitle(card);
     }
 
     // 현재 접속 중인 사용자 세션 조회
@@ -67,5 +85,22 @@ public class ManagerService {
                 })
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+    }
+
+    private String normalizeCardStatus(String status) {
+        if ("ACTIVE".equals(status) || "INACTIVE".equals(status)) {
+            return status;
+        }
+        throw new IllegalArgumentException("Unsupported card status: " + status);
+    }
+
+    private String displayCardTitle(BusinessCard card) {
+        if (card.getTitle() != null && !card.getTitle().isBlank()) {
+            return card.getTitle();
+        }
+        if (card.getDisplayName() != null && !card.getDisplayName().isBlank()) {
+            return card.getDisplayName();
+        }
+        return "card-" + card.getCardId();
     }
 }
