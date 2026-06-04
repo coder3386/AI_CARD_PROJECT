@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>내 문의 내역</title>
+    <link rel="stylesheet" th:href="@{/css/inquiry_style.css}">
+</head>
+<body>
+
+<h2>새 문의 작성하기</h2>
+<form th:action="@{/inquiry/create}" method="post">
+
+    <input type="text" name="title" placeholder="제목을 입력하세요">
+
+    <textarea name="content" placeholder="내용을 입력하세요"></textarea>
+
+    <button type="submit">작성하기</button>
+</form>
+
+
+<div class="inquiry-list-container">
+    <h2>나의 문의 내역</h2>
+
+    <table>
+        <thead>
+        <tr>
+            <th>번호</th>
+            <th>제목</th>
+            <th>상태</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="inquiry : ${myInquiries}">
+            <td th:text="${inquiry.id}">1</td>
+            <td>
+                <span th:text="${inquiry.title}">문의 제목입니다.</span>
+                <div class="answer-box" th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}">
+                    ↳ <strong>답변:</strong> <span th:text="${inquiry.answer}">답변 내용</span>
+                </div>
+            </td>
+            <td>
+                <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).WAITING}" class="badge-waiting">답변대기중</span>
+                <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}" class="badge-completed">답변완료</span>
+            </td>
+        </tr>
+
+        <tr th:if="${#lists.isEmpty(myInquiries)}">
+            <td colspan="3">작성하신 문의 내역이 없습니다.</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    // 컨트롤러에서 보낸 successMessage를 자바스크립트 변수로 가져옵니다.
+    var message = /*[[${successMessage}]]*/ null;
+
+    // 메시지가 존재하면(작성을 방금 완료했다면) 알림창을 띄웁니다.
+    if (message != null) {
+        alert(message);
+    }
+</script>
+</body>
+</html>

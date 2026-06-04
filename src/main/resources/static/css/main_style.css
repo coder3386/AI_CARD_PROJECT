@@ -286,3 +286,87 @@ a {
         gap: 40px;
     }
 }
+
+/* 1. 팝업 전체를 감싸는 어두운 배경 바깥 레이어 */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6); /* 뒷 배경을 어둡게 처리하여 몰입감 제공 */
+    display: none;        /* 기본값은 숨김 처리 (JS에서 flex로 변경) */
+    justify-content: center; /* 가로 기준 정중앙 정렬 */
+    align-items: center;    /* 세로 기준 정중앙 정렬 */
+    z-index: 10000;       /* 네비게이션 바 등 다른 요소보다 무조건 위에 뜨도록 높은 값 설정 */
+}
+
+/* 2. 정중앙에 배치될 하얀색 팝업 본체 상자 */
+.modal-content {
+    background-color: #ffffff;
+    width: 450px;           /* 팝업 너비 */
+    max-width: 90%;         /* 모바일 환경 대응을 위한 최대 너비 제한 */
+    padding: 30px;
+    border-radius: 14px;    /* 모서리를 둥글게 */
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2); /* 부드러운 그림자 효과 */
+    animation: fadeInModal 0.3s ease-out; /* 팝업이 나타날 때 부드러운 애니메이션 효과 */
+}
+
+/* 팝업 제목 스타일 */
+.modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+    color: #111111;
+    font-weight: 700;
+    border-bottom: 1px solid #eeeeee;
+    padding-bottom: 12px;
+}
+
+/* 공지 내용 텍스트 영역 */
+.notice-text {
+    font-size: 1rem;
+    color: #444444;
+    line-height: 1.6;
+    margin-bottom: 25px;
+    max-height: 350px;     /* 내용이 너무 길어지면 박스가 무한히 커지지 않도록 제한 */
+    overflow-y: auto;      /* 대용량 글일 경우 박스 안에서 스크롤 생성 */
+    white-space: pre-wrap;  /* 줄바꿈(\n)이나 공백이 깨지지 않고 화면에 그대로 표시 */
+}
+
+/* 팝업 하단 영역 (버튼 배치) */
+.modal-footer {
+    display: block;
+    text-align: center;
+}
+
+/* 확인하고 닫기 버튼 스타일 */
+.btn-close {
+    width: 100%;
+    padding: 14px;
+    background-color: #007bff; /* 파란색 기본 버튼 (프로젝트 메인 포인트 컬러로 변경 가능) */
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+/* 버튼 마우스 호버 효과 */
+.btn-close:hover {
+    background-color: #0056b3;
+}
+
+/* 3. 팝업 등장 애니메이션 효과 정의 */
+@keyframes fadeInModal {
+    from {
+        opacity: 0;
+        transform: translateY(-20px); /* 위에서 아래로 살짝 내려오면서 등장 */
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
