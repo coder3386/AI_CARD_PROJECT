@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <link rel="stylesheet" th:href="@{/css/fragments.css}">
+</head>
+<body>
+
+<main th:fragment="cardContent" class="manager-center-view">
+    <div class="welcome-card">
+        <h2>&#47749;&#54632; &#54876;&#49457;&#54868; &#44288;&#47532;</h2>
+        <p>&#51204;&#52404; &#47749;&#54632;&#51012; &#54869;&#51064;&#54616;&#44256; &#44277;&#44060; &#54168;&#51060;&#51648; &#51217;&#44540; &#44032;&#45733; &#50668;&#48512;&#47484; &#54876;&#49457;&#54868; &#46608;&#45716; &#48708;&#54876;&#49457;&#54868;&#54624; &#49688; &#51080;&#49845;&#45768;&#45796;.</p>
+
+        <div th:if="${successMessage}" class="error-message-box">
+            <p th:text="${successMessage}">&#52376;&#47532;&#46104;&#50632;&#49845;&#45768;&#45796;.</p>
+        </div>
+
+        <div th:if="${errorMessage}" class="error-message-box">
+            <p th:text="${errorMessage}">&#52376;&#47532; &#51473; &#50724;&#47448;&#44032; &#48156;&#49373;&#54664;&#49845;&#45768;&#45796;.</p>
+        </div>
+
+        <table class="manager-table">
+            <thead>
+            <tr>
+                <th>&#47749;&#54632; ID</th>
+                <th>&#49548;&#50976;&#51088;</th>
+                <th>&#47749;&#54632;</th>
+                <th>&#44277;&#44060;</th>
+                <th>&#44288;&#47532; &#49345;&#53468;</th>
+                <th>&#51312;&#54924;&#49688;</th>
+                <th>&#49345;&#53468; &#48320;&#44221;</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="card : ${cards}">
+                <td th:text="${card.cardId}">1</td>
+                <td>
+                    <span th:text="${card.ownerName}">Owner</span><br>
+                    <small th:text="${card.ownerLoginId}">user01</small>
+                </td>
+                <td>
+                    <span th:text="${card.displayTitle}">Card title</span><br>
+                    <a th:href="@{/public/card/{publicUrl}(publicUrl=${card.publicUrl})}"
+                       target="_blank"
+                       rel="noopener"
+                       th:text="${card.publicUrl}">public_url</a>
+                </td>
+                <td>
+                    <span th:if="${card.publicCard == true}" class="badge badge-user">&#44277;&#44060;</span>
+                    <span th:if="${card.publicCard != true}" class="badge badge-admin">&#48708;&#44277;&#44060;</span>
+                </td>
+                <td>
+                    <span th:if="${card.active == true}" class="badge badge-manager">ACTIVE</span>
+                    <span th:if="${card.active != true}" class="badge badge-admin">INACTIVE</span>
+                </td>
+                <td th:text="${card.viewCount}">0</td>
+                <td>
+                    <form th:action="@{/manager/cards/update-status}" method="post" style="margin: 0;">
+                        <input type="hidden" name="cardId" th:value="${card.cardId}">
+                        <select name="newStatus" class="manager-select">
+                            <option value="ACTIVE" th:selected="${card.active == true}">ACTIVE</option>
+                            <option value="INACTIVE" th:selected="${card.active != true}">INACTIVE</option>
+                        </select>
+                        <button type="submit" class="btn-submit-yellow">&#48320;&#44221;</button>
+                    </form>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(cards)}" class="empty-row">
+                <td colspan="7">&#49373;&#49457;&#46108; &#47749;&#54632;&#51060; &#50630;&#49845;&#45768;&#45796;.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+
+</body>
+</html>

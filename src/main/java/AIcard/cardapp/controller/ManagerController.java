@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
 import java.util.List;
@@ -164,6 +165,28 @@ public class ManagerController {
         model.addAttribute("contentFragment", "Manager/fragments/notice :: noticeContent");
         return "Manager/Manager";
     }
+    @GetMapping("/cards")
+    public String cardStatusPage(Model model) {
+        model.addAttribute("activeMenu", "cards");
+        model.addAttribute("currentMenuName", "\uC6B4\uC601\uC790 \uBA85\uD568 \uBE44\uD65C\uC131\uD654");
+        model.addAttribute("cards", managerService.getAllCards());
+        model.addAttribute("contentFragment", "Manager/fragments/cards :: cardContent");
+        return "Manager/Manager";
+    }
 
-
+    @PostMapping("/cards/update-status")
+    public String updateCardStatus(
+            @RequestParam("cardId") Long cardId,
+            @RequestParam("newStatus") String newStatus,
+            RedirectAttributes redirectAttributes
+    ) {
+        try {
+            String title = managerService.changeCardStatus(cardId, newStatus);
+            String statusLabel = "ACTIVE".equals(newStatus) ? "\uD65C\uC131\uD654" : "\uBE44\uD65C\uC131\uD654";
+            redirectAttributes.addFlashAttribute("successMessage", title + " \uBA85\uD568\uC774 " + statusLabel + "\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+        } catch (RuntimeException ex) {
+            redirectAttributes.addFlashAttribute("errorMessage", ex.getMessage());
+        }
+        return "redirect:/manager/cards";
+    }
 }

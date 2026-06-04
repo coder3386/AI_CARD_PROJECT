@@ -50,6 +50,9 @@
                 <li class="menu-item" th:classappend="${activeMenu == 'stats'} ? 'active'">
                     <a th:href="@{/manager/log/error}"><i>📈</i> <span>오류 로그</span></a>
                 </li>
+                <li class="menu-item" th:classappend="${activeMenu == 'cards'} ? 'active'">
+                    <a th:href="@{/manager/cards}"><i>💳</i> <span>전체 명함 관리</span></a>
+                </li>
             </ul>
         </nav>
 

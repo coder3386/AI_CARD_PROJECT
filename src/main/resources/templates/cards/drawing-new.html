@@ -77,35 +77,35 @@
                 </label>
                 <label>
                     이름
-                    <input type="text" th:field="*{displayName}" placeholder="홍길동">
+                    <input type="text" th:field="*{displayName}" maxlength="15" placeholder="홍길동">
                 </label>
                 <label>
                     직무 / 직책
-                    <input type="text" th:field="*{jobTitle}" placeholder="프론트엔드 개발자">
+                    <input type="text" th:field="*{jobTitle}" maxlength="20" placeholder="프론트엔드 개발자">
                 </label>
                 <label>
                     회사 / 소속
-                    <input type="text" th:field="*{company}" placeholder="AI Card Lab">
+                    <input type="text" th:field="*{company}" maxlength="25" placeholder="AI Card Lab">
                 </label>
                 <label>
                     부서 / 전공
-                    <input type="text" th:field="*{department}" placeholder="컴퓨터공학과">
+                    <input type="text" th:field="*{department}" maxlength="25" placeholder="컴퓨터공학과">
                 </label>
             </div>
 
             <label>
                 자기소개
-                <textarea th:field="*{intro}" rows="3" placeholder="명함에 들어갈 짧은 소개"></textarea>
+                <textarea th:field="*{intro}" rows="3" maxlength="50" placeholder="명함에 들어갈 짧은 소개"></textarea>
             </label>
 
             <div class="ai-card-grid">
                 <label>
                     이메일
-                    <input type="email" th:field="*{email}" placeholder="test@example.com">
+                    <input type="email" th:field="*{email}" maxlength="50" placeholder="test@example.com">
                 </label>
                 <label>
                     전화번호
-                    <input type="text" th:field="*{phone}" placeholder="010-1234-5678">
+                    <input type="text" th:field="*{phone}" maxlength="20" placeholder="010-1234-5678">
                 </label>
             </div>
 
