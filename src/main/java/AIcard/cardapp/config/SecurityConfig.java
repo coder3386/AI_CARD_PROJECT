@@ -41,7 +41,7 @@ public class SecurityConfig {
                         .requestMatchers("/error", "/error/**").permitAll() // 누구나 접근 가능
                         .requestMatchers("/", "/main", "/viewDemo").permitAll() // 누구나 접근 가능
                         .requestMatchers("/terms", "/privacypolicy").permitAll()
-                        .requestMatchers("/manager/**").hasAnyRole("MANAGER", "wle")
+                        .requestMatchers("/manager/**").hasAnyRole("MANAGER", "ADMIN")
                         .requestMatchers("/card/join", "/card/login", "/api/notices/**").permitAll()
                         .requestMatchers("/card/edit").authenticated()
                         //.requestMatchers("manager/").hasRole("MANAGER")
