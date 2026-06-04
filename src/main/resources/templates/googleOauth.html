@@ -1,0 +1,256 @@
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>구글 주소록 연동 | AI 디지털명함</title>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+
+        <style>
+            /* 기본 테마 및 초기화 */
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: 'Noto Sans KR', sans-serif;
+            }
+
+            body {
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                color: #333;
+            }
+
+            /* 인증 카드 컨테이너 */
+            .auth-container {
+                background-color: #ffffff;
+                border-radius: 16px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+                width: 100%;
+                max-width: 450px;
+                padding: 40px 30px;
+                text-align: center;
+                transition: transform 0.3s ease;
+            }
+
+            .auth-container:hover {
+                transform: translateY(-5px);
+            }
+
+            /* 상단 로고 및 아이콘 */
+            .brand-logo {
+                font-size: 24px;
+                font-weight: 700;
+                color: #4a90e2;
+                margin-bottom: 25px;
+                letter-spacing: -0.5px;
+            }
+
+            .icon-box {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 15px;
+                margin-bottom: 25px;
+            }
+
+            .icon-box .app-icon, .icon-box .google-icon {
+                width: 50px;
+                height: 50px;
+                border-radius: 50%;
+                background-color: #f1f3f5;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            }
+
+            .sync-arrow {
+                font-size: 20px;
+                color: #adb5bd;
+                animation: pulse 2s infinite;
+            }
+
+            /* 텍스트 설명 */
+            .auth-title {
+                font-size: 20px;
+                font-weight: 500;
+                color: #212529;
+                margin-bottom: 12px;
+            }
+
+            .auth-desc {
+                font-size: 14px;
+                color: #6c757d;
+                line-height: 1.6;
+                margin-bottom: 30px;
+            }
+
+            /* 구글 로그인 버튼 스타일 */
+            .btn-google-sync {
+                width: 100%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                background-color: #ffffff;
+                color: #1f1f1f;
+                border: 1px solid #747775;
+                border-radius: 8px;
+                padding: 12px 24px;
+                font-size: 15px;
+                font-weight: 500;
+                cursor: pointer;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+                transition: background-color 0.2s, box-shadow 0.2s, border-color 0.2s;
+            }
+
+            .btn-google-sync:hover {
+                background-color: #f8fafd;
+                border-color: #4285f4;
+                box-shadow: 0 2px 5px rgba(66, 133, 244, 0.2);
+            }
+
+            .btn-google-sync img {
+                display: block;
+            }
+
+            /* 하단 안내 및 링크 */
+            .auth-footer {
+                margin-top: 25px;
+                font-size: 12px;
+                color: #adb5bd;
+            }
+
+            .auth-footer a {
+                color: #4a90e2;
+                text-decoration: none;
+                margin-left: 5px;
+            }
+
+            .auth-footer a:hover {
+                text-decoration: underline;
+            }
+
+            /* 애니메이션 효과 */
+            @keyframes pulse {
+                0% { transform: scale(1); opacity: 0.6; }
+                50% { transform: scale(1.1); opacity: 1; }
+                100% { transform: scale(1); opacity: 0.6; }
+            }
+        </style>
+    </head>
+    <body>
+
+    <div class="auth-container">
+        <div class="brand-logo">AI CARD</div>
+
+        <div class="icon-box">
+            <div class="app-icon">
+                <span style="font-size: 24px;">📇</span>
+            </div>
+            <div class="sync-arrow">↔</div>
+            <div class="google-icon">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google" width="26" height="26">
+            </div>
+        </div>
+
+        <h1 class="auth-title">구글 주소록 연동 안내</h1>
+        <p class="auth-desc">
+            안전한 구글 이메일 인증을 통해 주소록을 연동합니다.<br>
+            연동된 연락처는 디지털 명함 관리 및 발송용으로 안전하게 보관되며, 언제든지 연동을 해제하실 수 있습니다.
+        </p>
+
+        <button id="google-sync-btn" class="btn-google-sync">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google logo" width="20" height="20">
+            Google 계정으로 주소록 연동
+        </button>
+
+        <div class="auth-footer">
+            인증에 문제가 있나요? <a href="#">고객지원센터</a>
+        </div>
+    </div>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <script>
+        let tokenClient;
+
+        // 페이지 가 로드되면 구글 토큰 발급 클라이언트를 초기화합니다.
+        window.onload = function () {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: '893320613116-b1d36l01tvd7gqqt3dkaj22qapb45aua.apps.googleusercontent.com', // ⚠️ 구글 콘솔에서 발급받은 클라이언트 ID로 변경하세요!
+                scope: 'https://www.googleapis.com/auth/contacts',   // 구글 주소록 가져오기 권한(필수)
+                callback: (tokenResponse) => {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        const accessToken = tokenResponse.access_token;
+                        console.log("구글 인증 성공! 토큰 수신 완료.");
+
+                        // 2. 백엔드 스프링 부트 서버의 컨트롤러로 토큰 전송
+                        sendTokenToBackend(accessToken);
+                    }
+                },
+            });
+        };
+
+        // 버튼을 누르면 구글 로그인 및 동의 팝업창이 표시됩니다.
+        document.getElementById('google-sync-btn').onclick = () => {
+            tokenClient.requestAccessToken({ prompt: 'select_account' });
+        };
+
+        // 백엔드 API인 GoogleContactController로 Access Token을 POST 전송하는 함수
+        function sendTokenToBackend(token) {
+            // 주소록 연동 중임을 나타내는 UI 피드백
+            const syncBtn = document.getElementById('google-sync-btn');
+            syncBtn.disabled = true;
+            syncBtn.innerText = "주소록 데이터를 동기화 중입니다...";
+
+            // 🌟 여기가 핵심! 백엔드 DTO(GoogleContactDTO)와 필드명이 일치하는 데이터 객체 생성
+            const mockContactData = {
+                "name": "홍길동",            // 실제 DTO 변수명과 일치해야 함
+                "phoneNumber": "010-1234-5678",
+                "email": "test@example.com",
+                "company": "AI CARD",
+                "jobTitle": "사용자"
+            };
+
+            fetch('/card/api/contacts/sync', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` // 구글 토큰 전달
+                },
+                // 🌟 백엔드로 JSON 문자열을 보내야 합니다!
+                body: JSON.stringify(mockContactData)
+            })
+                .then(response => {
+                    if (response.ok) {
+                        alert('🎉 구글 주소록 동기화가 성공적으로 완료되었습니다!');
+                        window.location.href = '/card/contacts/list';
+                    } else {
+                        // 400 에러가 다시 발생한다면, 이 alert가 뜰 것입니다.
+                        alert('❌ 주소록 동기화에 실패했습니다. 데이터를 다시 확인해주세요.');
+                        resetButton();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('서버 통신 중 오류가 발생했습니다.');
+                    resetButton();
+                });
+        }
+
+        function resetButton() {
+            const syncBtn = document.getElementById('google-sync-btn');
+            syncBtn.disabled = false;
+            syncBtn.innerHTML = `
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" alt="Google logo" width="20" height="20">
+                    Google 계정으로 주소록 연동
+                `;
+        }
+    </script>
+    </body>
+    </html>

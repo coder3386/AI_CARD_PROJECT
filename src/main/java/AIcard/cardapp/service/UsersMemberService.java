@@ -17,6 +17,7 @@ public class UsersMemberService {
 
     private final UsersMemberRepository memberRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger("USER_LOGGER");
 
     public Long join(UsersMemberRequestDTO dto) {
         UsersMember member = UsersMember.builder()
@@ -27,6 +28,7 @@ public class UsersMemberService {
                 .phone(dto.getPhone())
                 .role("USER")
                 .build();
+        log.info("[USER-ACTION]|새로운 회원가입 완료. 등록된 ID: {}, 로그인 ID: {}", memberRepository.save(member).getId(), member.getLoginId());
         return memberRepository.save(member).getId();
     }
 
@@ -40,16 +42,21 @@ public class UsersMemberService {
         // 1. 기존 비밀번호가 일치하는지 검사 (매우 중요!)
         // matches(입력한 평문 비밀번호, DB에 암호화된 비밀번호)
         if (!passwordEncoder.matches(dto.getCurrentPassword(), member.getPassword())) {
+            log.info("[USER-ACTION]|회원정보 수정 실패 (비밀번호 불일치). 시도자 ID: {}", loginId);
             return false; // 비밀번호가 틀리면 false 반환
         }
 
         // 2. 새 비밀번호 수정 (새 비밀번호를 입력했을 때만 변경)
+        boolean isPasswordChanged = false;
         if (dto.getPassword() != null && !dto.getPassword().isEmpty()) {
             member.updatePassword(passwordEncoder.encode(dto.getPassword()));
+            isPasswordChanged = true;
         }
 
         // 3. 휴대폰 번호 수정
         member.updatePhone(dto.getPhone());
+
+        log.info("[USER-ACTION]|회원정보 수정 완료. 사용자 ID: {} (비밀번호 변경 여부: {})", loginId, isPasswordChanged);
 
         return true; // 성공적으로 수정되면 true 반환
     }

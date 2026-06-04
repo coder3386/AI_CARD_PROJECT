@@ -25,6 +25,7 @@
             <p class="ai-card-kicker">Preview</p>
             <h1>글자 수정</h1>
             <p class="ai-public-url" th:text="'public_url: ' + ${card.publicUrl}">public_url</p>
+            <p class="ai-error-message" th:if="${errorMessage}" th:text="${errorMessage}"></p>
         </div>
 
         <form class="ai-card-form" th:action="@{/cards/{cardId}/update-text(cardId=${card.cardId})}" method="post" enctype="multipart/form-data">
@@ -42,31 +43,31 @@
             <div class="ai-form-section-title">기본정보</div>
             <label>
                 이름
-                <input data-preview-target="nameText" type="text" name="displayName" th:value="${card.displayName}">
+                <input data-preview-target="nameText" type="text" name="displayName" maxlength="15" th:value="${card.displayName}">
             </label>
             <label>
                 직무 / 직책
-                <input data-preview-target="jobText" type="text" name="jobTitle" th:value="${card.jobTitle}">
+                <input data-preview-target="jobText" type="text" name="jobTitle" maxlength="20" th:value="${card.jobTitle}">
             </label>
             <label>
                 회사 / 소속
-                <input data-preview-target="companyText" type="text" name="company" th:value="${card.company}">
+                <input data-preview-target="companyText" type="text" name="company" maxlength="25" th:value="${card.company}">
             </label>
             <label>
                 부서 / 전공
-                <input data-preview-target="departmentText" type="text" name="department" th:value="${card.department}">
+                <input data-preview-target="departmentText" type="text" name="department" maxlength="25" th:value="${card.department}">
             </label>
             <label>
                 자기소개
-                <textarea data-preview-target="introText" name="intro" rows="5" th:text="${card.intro}"></textarea>
+                <textarea data-preview-target="introText" name="intro" rows="5" maxlength="50" th:text="${card.intro}"></textarea>
             </label>
             <label>
                 이메일
-                <input data-preview-target="emailText" type="email" name="email" th:value="${card.email}">
+                <input data-preview-target="emailText" type="email" name="email" maxlength="50" th:value="${card.email}">
             </label>
             <label>
                 전화번호
-                <input data-preview-target="phoneText" type="text" name="phone" th:value="${card.phone}">
+                <input data-preview-target="phoneText" type="text" name="phone" maxlength="20" th:value="${card.phone}">
             </label>
 
             <details class="ai-extra-panel">

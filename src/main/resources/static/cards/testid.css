@@ -1,0 +1,119 @@
+/* 전체 화면 설정 (명함을 모니터 정중앙에 배치) */
+body {
+    background-color: #f0f2f5;
+    font-family: 'Malgun Gothic', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* 디지털 명함 본체 카드 스타일 */
+.business-card {
+    width: 380px;
+    padding: 30px;
+    border-radius: 20px;
+    /* 세련된 퍼플-블루 그라데이션 배경색 */
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    box-shadow: 0 15px 35px rgba(118, 75, 162, 0.3);
+    box-sizing: border-box;
+}
+
+/* 상단 헤더 영역 플렉스 배치 (사진과 텍스트를 가로 정렬) */
+.card-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 20px;
+}
+
+/* 프로필 이미지가 올라갈 원형 칸 */
+.profile-img {
+    width: 75px;
+    height: 75px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.avatar-placeholder {
+    font-size: 35px;
+}
+
+/* 헤더 텍스트 스타일 */
+.header-text {
+    flex: 1;
+}
+
+.card-header .name {
+    margin: 0 0 5px 0;
+    font-size: 22px;
+    font-weight: bold;
+    letter-spacing: -0.5px;
+}
+
+.card-header .position {
+    margin: 0;
+    font-size: 14px;
+    color: #e2e8f0;
+}
+
+/* 본문 정보 아이템 영역 */
+.card-body {
+    margin-top: 25px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 12px 15px;
+    border-radius: 10px;
+}
+
+.info-item .icon {
+    font-size: 16px;
+}
+
+.info-item p {
+    margin: 0;
+    font-size: 14px;
+    color: #f7fafc;
+}
+
+/* 하단 다운로드 버튼 스타일 */
+.card-footer {
+    margin-top: 25px;
+    text-align: center;
+}
+
+.btn-download {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    background-color: #ffffff;
+    color: #764ba2;
+    text-decoration: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+}
+
+/* 버튼 마우스 오버 효과 */
+.btn-download:hover {
+    background-color: #f7fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}

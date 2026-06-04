@@ -22,12 +22,12 @@
 
         <p th:if="${successMessage}" class="ai-success-message" th:text="${successMessage}">처리되었습니다.</p>
 
-        <div th:if="${cards.empty}" class="my-card-empty">
-            아직 생성한 명함이 없습니다.
+        <div th:if="${cards.isEmpty()}" class="my-card-empty">
+        아직 생성한 명함이 없습니다.
         </div>
 
-        <div th:if="${!cards.empty}" class="my-card-list">
-            <article class="my-card-row" th:each="card, iter : ${cards.content}">
+        <div th:if="${!cards.isEmpty()}" class="my-card-list">
+        <article class="my-card-row" th:each="card, iter : ${cards.content}">
                 <div class="my-card-number" th:text="${cards.number * cards.size + iter.index + 1}">1</div>
                 <div class="my-card-info">
                     <strong th:text="${myCardService.displayTitle(card)}">명함 제목</strong>
@@ -58,6 +58,13 @@
                         보기
                     </a>
 
+                    <button class="my-card-qr-button"
+                            type="button"
+                            th:data-qr-src="@{/cards/my/{cardId}/qr-image(cardId=${card.cardId})}"
+                            th:data-qr-title="${myCardService.displayTitle(card)}">
+                        QR
+                    </button>
+
                     <form th:action="@{/cards/my/{cardId}/delete(cardId=${card.cardId})}"
                           method="post"
                           onsubmit="return confirm('이 명함을 삭제하시겠습니까? 삭제 후 복구할 수 없습니다.');">
@@ -76,6 +83,53 @@
     </section>
 </main>
 
+<div id="myCardQrModal" class="my-card-qr-modal" hidden>
+    <div class="my-card-qr-dialog" role="dialog" aria-modal="true" aria-labelledby="myCardQrTitle">
+        <button class="my-card-qr-close" type="button" data-qr-close aria-label="닫기">X</button>
+        <p class="ai-card-kicker">QR Code</p>
+        <h2 id="myCardQrTitle" data-qr-title>명함 QR 코드</h2>
+        <img data-qr-image src="" alt="명함 QR 코드">
+        <a data-qr-open href="#" target="_blank" rel="noopener">이미지 새 창으로 열기</a>
+    </div>
+</div>
+
 <script th:src="@{/js/card-type-select.js}"></script>
+<script>
+    (function () {
+        const modal = document.getElementById("myCardQrModal");
+        if (!modal) {
+            return;
+        }
+
+        const title = modal.querySelector("[data-qr-title]");
+        const image = modal.querySelector("[data-qr-image]");
+        const openLink = modal.querySelector("[data-qr-open]");
+
+        document.addEventListener("click", function (event) {
+            const qrButton = event.target.closest("[data-qr-src]");
+            if (qrButton) {
+                const src = qrButton.getAttribute("data-qr-src");
+                const cacheSafeSrc = src + (src.includes("?") ? "&" : "?") + "t=" + Date.now();
+                title.textContent = (qrButton.getAttribute("data-qr-title") || "명함") + " QR 코드";
+                image.src = cacheSafeSrc;
+                openLink.href = src;
+                modal.hidden = false;
+                return;
+            }
+
+            if (event.target.closest("[data-qr-close]") || event.target === modal) {
+                modal.hidden = true;
+                image.src = "";
+            }
+        });
+
+        document.addEventListener("keydown", function (event) {
+            if (event.key === "Escape" && !modal.hidden) {
+                modal.hidden = true;
+                image.src = "";
+            }
+        });
+    })();
+</script>
 </body>
 </html>

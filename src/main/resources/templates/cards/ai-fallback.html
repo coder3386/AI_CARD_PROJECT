@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 명함 생성 안내</title>
+    <link rel="stylesheet" th:href="@{/css/ai-card.css}">
+</head>
+<body class="ai-card-page">
+<button class="ai-home-button" type="button" data-main-home th:data-home-url="@{/}">메인화면으로 가기</button>
+
+<main class="ai-card-shell">
+    <section class="ai-card-form-panel ai-fallback-panel">
+        <div class="ai-card-header">
+            <p class="ai-card-kicker">AI Generation Failed</p>
+            <h1>AI 명함 생성에 실패했습니다.</h1>
+            <p class="ai-card-description" th:text="${failureReason}">
+                AI 생성에 실패하여 기본 템플릿을 준비했습니다.
+            </p>
+        </div>
+
+        <div class="ai-fallback-summary">
+            <strong th:text="${card.title != null && !card.title.isBlank() ? card.title : card.displayName}">
+                명함 제목
+            </strong>
+            <span th:text="'public_url: ' + ${card.publicUrl}">public_url</span>
+        </div>
+
+        <div class="ai-fallback-actions">
+            <a class="ai-card-primary-button"
+               th:href="@{/cards/{cardId}/preview(cardId=${card.cardId})}">
+                기본 템플릿 생성
+            </a>
+            <a class="ai-card-secondary-button"
+               th:href="${retryType == 'drawing' ? '/cards/drawing/new' : '/cards/new'}">
+                재시도
+            </a>
+            <a class="ai-card-secondary-button" th:href="@{/}">
+                메인페이지로 이동
+            </a>
+        </div>
+    </section>
+</main>
+
+<script th:src="@{/js/card-type-select.js}"></script>
+</body>
+</html>

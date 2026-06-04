@@ -7,10 +7,10 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UsersMemberRequestDTO {
-    private String loginid;
-    private String password;
+public class CardDownloadDTO {
     private String name;
+    private String position;
     private String email;
     private String phone;
+    private String imagePath;
 }

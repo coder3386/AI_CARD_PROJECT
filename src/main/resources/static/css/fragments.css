@@ -1,0 +1,248 @@
+/* 4. 에러 메시지 박스 */
+.error-message-box {
+    background-color: #fff3cd; /* 경고 노란색 바탕 */
+    border: 1px solid #ffeeba;
+    color: #856404; /* 어두운 황갈색 글씨 */
+    padding: 12px 20px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+.error-message-box p {
+    margin: 0;
+    color: inherit;
+}
+
+.manager-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: center;
+    margin-top: 20px;
+    background-color: #ffffff;
+
+    /* 전체 표를 감싸는 외곽 갈색 테두리 */
+    border: 2px solid #5c4d43;
+    box-shadow: 0 2px 8px rgba(92, 77, 67, 0.08);
+}
+
+.manager-table th {
+    background-color: #5c4d43; /* 딥 브라운 대문 요석 */
+    color: #ffffff; /* 흰색 글씨 */
+    font-weight: 600;
+    padding: 14px 10px;
+    font-size: 15px;
+    border: 1px solid #4a3b32;
+}
+
+.manager-table td {
+    padding: 12px 10px;
+    color: #4a4a4a;
+    font-size: 14px;
+    background-color: #ffffff;
+    border: 1px solid #dacfc0;
+}
+
+/* 테이블 줄무늬 격행 효과 */
+.manager-table tbody tr:nth-child(even) td {
+    background-color: #faf8f5;
+}
+
+/* 호버 시 부드럽게 강조 */
+.manager-table tbody tr:hover td {
+    background-color: #f5eedf !important;
+}
+
+/* 데이터가 없을 때 스타일 */
+.manager-table .empty-row td {
+    height: 80px;
+    color: #9c8c7c;
+    font-style: italic;
+}
+
+/* 6. 입력 폼 컴포넌트 (셀렉트, 버튼, 라벨) */
+.manager-select {
+    padding: 6px 10px;
+    border: 1px solid #cbd2d6;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #4a3b32;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.manager-select:focus {
+    border-color: #e5a93c; /* 포커스 시 따뜻한 황금노란색 */
+}
+
+.btn-submit-yellow {
+    padding: 6px 14px;
+    background-color: #f3b63a; /* 선명한 머스타드 노란색 */
+    border: 1px solid #e0a328;
+    color: #ffffff;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+
+.btn-submit-yellow:hover {
+    background-color: #e0a328; /* 마우스 올리면 짙은 노란색 */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* 7. 권한 상태 배지(Badge) */
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    font-weight: bold;
+    font-size: 12px;
+    border-radius: 4px;
+    align-items: center; /* 💡 수직 중앙 정렬 */
+    justify-content: center; /* 수평 중앙 정렬 */
+}
+
+.badge-user {
+    background-color: #eef3f7;
+    color: #3b6998;
+}
+
+.badge-manager {
+    background-color: #fbf0db;
+    color: #b7791f;
+}
+
+/* 갈색+노란색 중간 톤 매니저 */
+.badge-admin {
+    background-color: #fcedea;
+    color: #c53030;
+}
+
+/* 접속 상태 표시등 */
+.status-online {
+    color: #d97706; /* 따뜻한 꿀노란색 점 */
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.welcome-card h2 {
+    color: #5c4d43; /* 딥 브라운 */
+    font-size: 22px;
+    margin-bottom: 5px;
+}
+
+.welcome-card p.text-muted {
+    color: #9c8c7c;
+    font-size: 14px;
+    margin: 0;
+}
+
+/* 2. 로그 전용 모노스페이스 테이블 설정 */
+.log-table-container {
+    margin-top: 20px;
+    background-color: #ffffff;
+    border: 2px solid #5c4d43; /* 기존 외곽 갈색 테두리 계승 */
+    box-shadow: 0 2px 8px rgba(92, 77, 67, 0.08);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.log-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left; /* 로그 텍스트 가독성을 위해 왼쪽 정렬 */
+    font-family: 'Courier New', Courier, monospace; /* 개발자 전용 폰트 */
+    font-size: 13.5px;
+}
+
+.log-table th {
+    background-color: #5c4d43; /* 딥 브라운 요석 */
+    color: #ffffff;
+    font-weight: 600;
+    padding: 12px 14px;
+    font-size: 14px;
+    border: 1px solid #4a3b32;
+}
+
+.log-table td {
+    padding: 10px 14px;
+    color: #4a4a4a;
+    border: 1px solid #dacfc0;
+    line-height: 1.5;
+    vertical-align: top; /* 스택트레이스가 길어질 때 위쪽 정렬 */
+}
+
+/* 테이블 줄무늬 격행 및 호버 효과 */
+.log-table tbody tr:nth-child(even) td {
+    background-color: #faf8f5;
+}
+
+.log-table tbody tr:hover td {
+    background-color: #f5eedf !important; /* 따뜻한 미색 강조 */
+}
+
+/* 데이터 없을 때 스타일 */
+.log-table .empty-row td {
+    text-align: center;
+    height: 100px;
+    color: #9c8c7c;
+    font-style: italic;
+    vertical-align: middle;
+}
+
+/* 3. 로그 레벨 및 트래픽 강조 스타일 */
+.log-table td.text-secondary {
+    color: #9c8c7c !important; /* 로그 시간 색상 */
+}
+
+.log-table td.log-msg-bold {
+    font-weight: 700;
+    color: #4a3b32;
+}
+
+.log-table td.text-success-log {
+    color: #b7791f; /* 접근 로그에 기존 매니저 옐로우-브라운 톤 적용 */
+    font-weight: bold;
+}
+
+/* 4. ⚠️ 오류 로그(ERROR) 전용 시스템 디자인 */
+.log-table tbody tr.error-row td {
+    background-color: #fcedea !important; /* 기존 어드민 뱃지의 연한 붉은색 바탕 계승 */
+    color: #c53030; /* 짙은 적색 글씨 */
+    border-color: #f5c2bc;
+}
+
+.log-table tbody tr.error-row:hover td {
+    background-color: #f9e2df !important; /* 에러 행 호버 시 약간 더 짙게 */
+}
+
+/* 에러 로그 내부의 스택 트레이스(Trace) 스타일 */
+.trace-caption {
+    color: #718096;
+    font-weight: bold;
+    text-align: right;
+    padding-right: 15px !important;
+}
+
+.trace-detail {
+    white-space: pre-wrap; /* 줄바꿈 유지 */
+    word-break: break-all;
+    color: #4a5568 !important;
+    font-size: 12.5px;
+    background-color: #f7fafc; /* 코드 박스 느낌의 연한 그레이 */
+}
+
+/* 5. 시스템 에러 배지 */
+.badge-error {
+    background-color: #c53030;
+    color: #ffffff;
+    display: inline-block;
+    padding: 2px 6px;
+    font-weight: bold;
+    font-size: 11px;
+    border-radius: 4px;
+}
