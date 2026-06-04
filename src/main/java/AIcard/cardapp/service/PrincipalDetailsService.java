@@ -21,8 +21,7 @@ public class PrincipalDetailsService implements UserDetailsService {
         // DB의 login_id 컬럼에서 사용자를 찾음
         UsersMember member = memberRepository.findByLoginId(username)
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + username));
-
-        // 기존 내역을 지우고, 우리 엔티티를 품은 커스텀 객체를 리턴합니다.
+        
         return new PrincipalDetails(member);
         /*
         // 시큐리티 전용 세션에 담길 유저 정보 생성
