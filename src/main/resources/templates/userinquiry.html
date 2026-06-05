@@ -1,66 +1,130 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
-    <title>내 문의 내역</title>
+    <title>AI Card - 내 문의 내역</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" th:href="@{/css/main_style.css}">
     <link rel="stylesheet" th:href="@{/css/inquiry_style.css}">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
 
-<h2>새 문의 작성하기</h2>
-<form th:action="@{/inquiry/create}" method="post">
+<header class="navbar">
+    <div class="container">
+        <a href="/card/" class="logo">AICARD<span>.</span></a>
+        <nav class="nav-menu">
+            <a href="/card/#features">기능</a>
+            <a href="/card/#about">서비스 소개</a>
+            <a th:href="@{/inquiry/create}">문의하기</a>
+        </nav>
+        <div class="nav-auth">
+            <a th:href="@{/card/login}" class="btn-primary">이전으로</a>
+        </div>
+    </div>
+</header>
 
-    <input type="text" name="title" placeholder="제목을 입력하세요">
+<section class="inquiry-section">
+    <div class="container">
 
-    <textarea name="content" placeholder="내용을 입력하세요"></textarea>
-
-    <button type="submit">작성하기</button>
-</form>
-
-
-<div class="inquiry-list-container">
-    <h2>나의 문의 내역</h2>
-
-    <table>
-        <thead>
-        <tr>
-            <th>번호</th>
-            <th>제목</th>
-            <th>상태</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="inquiry : ${myInquiries}">
-            <td th:text="${inquiry.id}">1</td>
-            <td>
-                <span th:text="${inquiry.title}">문의 제목입니다.</span>
-                <div class="answer-box" th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}">
-                    ↳ <strong>답변:</strong> <span th:text="${inquiry.answer}">답변 내용</span>
+        <div class="inquiry-form-card">
+            <h2>새 문의 작성하기</h2>
+            <form th:action="@{/inquiry/create}" method="post">
+                <div class="form-group">
+                    <input type="text" name="title" class="form-control" placeholder="문의 제목을 입력하세요" required>
                 </div>
-            </td>
-            <td>
-                <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).WAITING}" class="badge-waiting">답변대기중</span>
-                <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}" class="badge-completed">답변완료</span>
-            </td>
-        </tr>
+                <div class="form-group">
+                    <textarea name="content" class="form-control" placeholder="문의하실 내용을 상세히 적어주세요." required></textarea>
+                </div>
+                <button type="submit" class="btn-primary large" style="border: none; cursor: pointer; width: 100%;">문의 등록하기</button>
+            </form>
+        </div>
 
-        <tr th:if="${#lists.isEmpty(myInquiries)}">
-            <td colspan="3">작성하신 문의 내역이 없습니다.</td>
-        </tr>
-        </tbody>
-    </table>
-</div>
+        <div class="inquiry-list-container">
+            <h2>나의 문의 내역</h2>
 
+            <div class="inquiry-table-wrapper">
+                <table class="inquiry-table">
+                    <thead>
+                    <tr>
+                        <th style="width: 10%;">번호</th>
+                        <th style="width: 70%;">제목 및 내용</th>
+                        <th style="width: 20%; text-align: center;">상태</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="inquiry : ${myInquiries}">
+                        <td th:text="${inquiry.id}">1</td>
+                        <td>
+                            <strong style="font-size: 1.1rem;" th:text="${inquiry.title}">문의 제목입니다.</strong>
 
+                            <div class="answer-box" th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}">
+                                ↳ <strong>관리자 답변:</strong> <span th:text="${inquiry.answer}">답변 내용이 여기에 표시됩니다.</span>
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).WAITING}" class="badge-waiting">답변대기중</span>
+                            <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}" class="badge-completed">답변완료</span>
+                        </td>
+                    </tr>
+
+                    <tr th:if="${#lists.isEmpty(myInquiries)}">
+                        <td colspan="3" style="text-align: center; padding: 50px 0; color: var(--text-sub);">
+                            작성하신 문의 내역이 없습니다.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<footer class="footer">
+    <div class="container">
+        <div class="footer-top">
+            <div class="footer-info">
+                <span class="logo">ALCARD<span>.</span></span>
+                <p>당신의 비즈니스를 한 단계 더 성장시킵니다.</p>
+            </div>
+            <div class="footer-links">
+                <div class="link-group">
+                    <h4>Product</h4>
+                    <a href="#">Features</a>
+                    <a href="#">Pricing</a>
+                </div>
+                <div class="link-group">
+                    <h4>Company</h4>
+                    <a href="#">About</a>
+                    <a href="#">SNS</a>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <div class="footer-inside">
+                <a href="#">회사소개</a>
+                <a th:href="@{terms}">이용약관</a>
+                <a th:href="@{privacypolicy}">개인정보처리방침</a>
+            </div>
+            <br>
+            <p>&copy; 2026 Alcard Inc. All rights reserved.</p>
+        </div>
+    </div>
+</footer>
+
+<script>lucide.createIcons();</script>
 <script th:inline="javascript">
     /*<![CDATA[*/
-    // 컨트롤러에서 보낸 successMessage를 자바스크립트 변수로 가져옵니다.
     var message = /*[[${successMessage}]]*/ null;
-
-    // 메시지가 존재하면(작성을 방금 완료했다면) 알림창을 띄웁니다.
     if (message != null) {
         alert(message);
     }
+    /*]]>*/
 </script>
 </body>
 </html>
