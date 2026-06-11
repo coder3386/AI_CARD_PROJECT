@@ -31,10 +31,6 @@
                th:href="@{/cards/{cardId}/preview(cardId=${card.cardId})}">
                 기본 템플릿 생성
             </a>
-            <a class="ai-card-secondary-button"
-               th:href="${retryType == 'drawing' ? '/cards/drawing/new' : '/cards/new'}">
-                재시도
-            </a>
             <a class="ai-card-secondary-button" th:href="@{/}">
                 메인페이지로 이동
             </a>

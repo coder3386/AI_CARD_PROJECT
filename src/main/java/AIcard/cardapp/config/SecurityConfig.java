@@ -57,6 +57,20 @@ public class SecurityConfig {
                         .requestMatchers("/manager/**").hasAnyRole("MANAGER", "ADMIN")
                         .requestMatchers("/card/join", "/card/login", "/api/notices/**").permitAll()
                         .requestMatchers("/card/edit").authenticated()
+                        .requestMatchers("/public/card/**", "/dont").permitAll()
+                        .requestMatchers("/cards/select-type").permitAll()
+                        .requestMatchers("/cards/*/profile-image").permitAll()
+                        .requestMatchers(
+                                "/cards/new",
+                                "/cards/generate",
+                                "/cards/drawing/**",
+                                "/cards/my/**",
+                                "/cards/*/preview",
+                                "/cards/*/update-text",
+                                "/cards/*/fix-layout",
+                                "/cards/*/delete",
+                                "/cards/*/ai-fallback"
+                        ).authenticated()
                         //.requestMatchers("manager/").hasRole("MANAGER")
                         .anyRequest().permitAll() // 그 외 모든 요청은 로그인해야함
 

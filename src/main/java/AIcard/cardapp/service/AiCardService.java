@@ -35,6 +35,7 @@ import java.util.UUID;
 public class AiCardService {
 
     private static final Long TEST_USER_ID = 1L;
+    private static final org.slf4j.Logger userLog = org.slf4j.LoggerFactory.getLogger("USER_LOGGER");
     private static final int MAX_EXTRA_ITEMS = 8;
     private static final int MAX_DISPLAY_NAME_LENGTH = 15;
     private static final int MAX_JOB_TITLE_LENGTH = 20;
@@ -255,8 +256,11 @@ public class AiCardService {
     @Transactional
     public void deleteCard(Long cardId) {
         BusinessCard card = getCard(cardId);
+        Long userId = card.getUserId();
+        String title = displayCardTitle(card);
         htmlExportService.deleteExportedCardDirectory(cardId);
         businessCardRepository.delete(card);
+        userLog.info("[USER-ACTION]|명함 삭제 완료. userId={}, cardId={}, title={}", userId, cardId, title);
     }
 
     @Transactional(readOnly = true)
@@ -589,5 +593,15 @@ public class AiCardService {
 
     private String defaultValue(String value, String fallback) {
         return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private String displayCardTitle(BusinessCard card) {
+        if (card.getTitle() != null && !card.getTitle().isBlank()) {
+            return card.getTitle();
+        }
+        if (card.getDisplayName() != null && !card.getDisplayName().isBlank()) {
+            return card.getDisplayName();
+        }
+        return "card-" + card.getCardId();
     }
 }

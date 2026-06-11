@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MyCardService {
 
     private static final int PAGE_SIZE = 10;
+    private static final org.slf4j.Logger userLog = org.slf4j.LoggerFactory.getLogger("USER_LOGGER");
 
     private final BusinessCardRepository businessCardRepository;
     private final HtmlExportService htmlExportService;
@@ -32,6 +33,7 @@ public class MyCardService {
         BusinessCard card = getOwnedCard(userId, cardId);
         card.setPublicCard(publicCard);
         businessCardRepository.save(card);
+        userLog.info("[USER-ACTION]|명함 공개 상태 변경. userId={}, cardId={}, isPublic={}", userId, cardId, publicCard);
         return displayTitle(card);
     }
 
@@ -41,6 +43,7 @@ public class MyCardService {
         String title = displayTitle(card);
         htmlExportService.deleteExportedCardDirectory(cardId);
         businessCardRepository.delete(card);
+        userLog.info("[USER-ACTION]|명함 삭제 완료. userId={}, cardId={}, title={}", userId, cardId, title);
         return title;
     }
 
