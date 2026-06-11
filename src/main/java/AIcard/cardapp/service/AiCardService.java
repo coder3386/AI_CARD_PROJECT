@@ -35,6 +35,7 @@ import java.util.UUID;
 public class AiCardService {
 
     private static final Long TEST_USER_ID = 1L;
+    private static final org.slf4j.Logger userLog = org.slf4j.LoggerFactory.getLogger("USER_LOGGER");
     private static final int MAX_EXTRA_ITEMS = 8;
     private static final int MAX_DISPLAY_NAME_LENGTH = 15;
     private static final int MAX_JOB_TITLE_LENGTH = 20;
@@ -193,7 +194,7 @@ public class AiCardService {
 
         CardLayout layout = new CardLayout();
         layout.setCardId(card.getCardId());
-        layout.setLayoutJson(aiResponse.getLayoutJson());
+        layout.setLayoutJson(defaultValue(cardRequest.getDrawingLayoutJson(), aiResponse.getLayoutJson()));
         cardLayoutRepository.save(layout);
 
         htmlExportService.exportCard(card.getCardId());
@@ -245,8 +246,9 @@ public class AiCardService {
 
         CardLayout layout = cardLayoutRepository.findByCardId(cardId)
                 .orElseGet(CardLayout::new);
+        String preservedLayoutJson = layout.getLayoutJson();
         layout.setCardId(cardId);
-        layout.setLayoutJson(fixed.getLayoutJson());
+        layout.setLayoutJson(isUserDrawingLayout(preservedLayoutJson) ? preservedLayoutJson : fixed.getLayoutJson());
         cardLayoutRepository.save(layout);
 
         htmlExportService.exportCard(cardId);
@@ -255,8 +257,11 @@ public class AiCardService {
     @Transactional
     public void deleteCard(Long cardId) {
         BusinessCard card = getCard(cardId);
+        Long userId = card.getUserId();
+        String title = displayCardTitle(card);
         htmlExportService.deleteExportedCardDirectory(cardId);
         businessCardRepository.delete(card);
+        userLog.info("[USER-ACTION]|명함 삭제 완료. userId={}, cardId={}, title={}", userId, cardId, title);
     }
 
     @Transactional(readOnly = true)
@@ -489,6 +494,23 @@ public class AiCardService {
         }
     }
 
+    private boolean isUserDrawingLayout(String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return false;
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(layoutJson);
+            JsonNode elements = root.path("elements");
+            return root.has("canvasWidth")
+                    && root.has("canvasHeight")
+                    && elements.isArray()
+                    && elements.size() > 0;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
     private Template chooseTemplateByRequest(List<Template> templates, CardCreateRequest request) {
         Template fallback = templates.getFirst();
         int modernScore = 0;
@@ -599,5 +621,13 @@ public class AiCardService {
 
     public List<BusinessCard> getCardsByUserId(Long userId) {
         return businessCardRepository.findByUserId(userId);
+    private String displayCardTitle(BusinessCard card) {
+        if (card.getTitle() != null && !card.getTitle().isBlank()) {
+            return card.getTitle();
+        }
+        if (card.getDisplayName() != null && !card.getDisplayName().isBlank()) {
+            return card.getDisplayName();
+        }
+        return "card-" + card.getCardId();
     }
 }

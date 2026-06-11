@@ -2,11 +2,14 @@ package AIcard.cardapp.service;
 
 import AIcard.cardapp.entity.BusinessCard;
 import AIcard.cardapp.entity.CardAiResult;
+import AIcard.cardapp.entity.CardLayout;
 import AIcard.cardapp.entity.CardLink;
 import AIcard.cardapp.repository.BusinessCardRepository;
 import AIcard.cardapp.repository.CardAiResultRepository;
 import AIcard.cardapp.repository.CardLayoutRepository;
 import AIcard.cardapp.repository.CardLinkRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,13 +30,29 @@ import java.util.regex.Pattern;
 public class HtmlExportService {
 
     private static final int CARD_WIDTH = 860;
+    private static final int CARD_HEIGHT = 480;
     private static final int SAFE_MARGIN = 36;
     private static final int EXTRA_AREA_WIDTH = 360;
+    private static final int EXTRA_AREA_HEIGHT = 178;
+    private static final int LINK_AREA_HEIGHT = 96;
+    private static final String[] CARD_CHILD_IDS = {
+            "nameText",
+            "jobText",
+            "companyText",
+            "departmentText",
+            "introText",
+            "emailText",
+            "phoneText",
+            "profileImage",
+            "portfolioArea",
+            "linkArea"
+    };
 
     private final BusinessCardRepository businessCardRepository;
     private final CardAiResultRepository cardAiResultRepository;
     private final CardLayoutRepository cardLayoutRepository;
     private final CardLinkRepository cardLinkRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${app.generated-card-dir:generated-cards}")
     private String generatedCardDir;
@@ -59,15 +79,33 @@ public class HtmlExportService {
         CardAiResult aiResult = cardAiResultRepository.findTopByCardIdOrderByCreatedAtDesc(cardId)
                 .orElseThrow(() -> new IllegalArgumentException("AI 생성 결과를 찾을 수 없습니다. cardId=" + cardId));
 
-        cardLayoutRepository.findByCardId(cardId);
+        String layoutJson = cardLayoutRepository.findByCardId(cardId)
+                .map(CardLayout::getLayoutJson)
+                .orElse("");
+        boolean userDrawingLayout = isUserDrawingLayoutJson(layoutJson);
+        String templateCode = extractTemplateCode(layoutJson);
 
-        String htmlFragment = removeStandaloneExtraItems(aiResult.getGeneratedHtml(), card.getCardId());
-        htmlFragment = removeAiGeneratedExtraPanels(htmlFragment, card.getCardId());
-        htmlFragment = applyBusinessText(htmlFragment, card);
-        htmlFragment = keepExtraAreaInlineStylesInsideCard(htmlFragment);
-        String css = removeAiGeneratedExtraPseudoContent(aiResult.getGeneratedCss());
-        css = keepExtraAreasInsideCard(css);
+        String htmlFragment;
+        String css;
+        if (userDrawingLayout) {
+            htmlFragment = removeStandaloneExtraItems(aiResult.getGeneratedHtml(), card.getCardId());
+            htmlFragment = removeAiGeneratedExtraPanels(htmlFragment, card.getCardId());
+            htmlFragment = repairMalformedClosingTags(htmlFragment);
+            htmlFragment = keepRequiredElementsInsideCardRoot(htmlFragment);
+            htmlFragment = ensureRequiredElementsExist(htmlFragment, card);
+            htmlFragment = applyBusinessText(htmlFragment, card);
+            htmlFragment = keepExtraAreaInlineStylesInsideCard(htmlFragment);
+            css = removeAiGeneratedExtraPseudoContent(aiResult.getGeneratedCss());
+            css = keepExtraAreasInsideCard(css);
+        } else {
+            htmlFragment = buildStableTextCardHtml(templateCode);
+            htmlFragment = applyBusinessText(htmlFragment, card);
+            css = buildStableTextCardCss(templateCode, layoutJson);
+        }
         htmlFragment = applyExtraItems(htmlFragment, card.getCardId());
+        htmlFragment = keepRequiredElementsInsideCardRoot(htmlFragment);
+        htmlFragment = applyLayoutJsonStyles(htmlFragment, layoutJson);
+        htmlFragment = applyRequiredElementLayoutFallbacks(htmlFragment, css, userDrawingLayout);
         String fullHtml = wrapFullHtml(htmlFragment, css);
 
         Path cardDirectory = Path.of(generatedCardDir, "card_" + cardId);
@@ -113,8 +151,15 @@ public class HtmlExportService {
             return "";
         }
         String exported = readExportedDocument(card.get());
+        String layoutJson = cardLayoutRepository.findByCardId(card.get().getCardId())
+                .map(CardLayout::getLayoutJson)
+                .orElse("");
+        boolean needsStableTextExport = !isUserDrawingLayoutJson(layoutJson)
+                && (!exported.contains("card-safe-layout") || !exported.contains("card-safe-layout-v2"));
         if (!exported.isBlank() && exported.contains("ai-card-inline-style")
-                && !hasAiGeneratedExtraPseudoContent(exported)) {
+                && !hasAiGeneratedExtraPseudoContent(exported)
+                && !needsStableTextExport
+                && !needsExportRepair(exported)) {
             return exported;
         }
         return exportCard(cardId);
@@ -170,6 +215,339 @@ public class HtmlExportService {
         );
     }
 
+    private String buildStableTextCardHtml(String templateCode) {
+        String templateClass = "card-safe-" + normalizeTemplateCode(templateCode).replace("_", "-");
+        return """
+                <div id="cardRoot" class="card-root card-safe-layout card-safe-color card-safe-layout-v2 %s">
+                  <div class="card-safe-grid">
+                    <section class="card-safe-identity" aria-label="identity">
+                      <div id="nameText" class="card-safe-name editable"></div>
+                      <div id="jobText" class="card-safe-job editable"></div>
+                      <div id="introText" class="card-safe-intro editable"></div>
+                    </section>
+                    <section class="card-safe-side" aria-label="profile and contact">
+                      <div id="profileImage" class="card-safe-profile" aria-hidden="true"></div>
+                      <div class="card-safe-meta">
+                        <div id="companyText" class="card-safe-row editable"></div>
+                        <div id="departmentText" class="card-safe-row editable"></div>
+                        <div id="emailText" class="card-safe-row editable"></div>
+                        <div id="phoneText" class="card-safe-row editable"></div>
+                      </div>
+                    </section>
+                    <div id="portfolioArea" class="card-safe-extra"></div>
+                    <div id="linkArea" class="card-safe-link"></div>
+                  </div>
+                </div>
+                """.formatted(templateClass);
+    }
+
+    private String buildStableTextCardCss(String templateCode, String layoutJson) {
+        String code = normalizeTemplateCode(templateCode);
+        String accentColor = extractCssColor(layoutJson, "pointColor");
+        String backgroundColor = extractCssColor(layoutJson, "backgroundColor");
+        String common = """
+                #cardRoot.card-safe-layout,
+                #cardRoot.card-safe-layout * {
+                  box-sizing: border-box;
+                  word-break: keep-all;
+                  overflow-wrap: anywhere;
+                }
+                #cardRoot.card-safe-layout {
+                  width: 860px;
+                  height: 480px;
+                  padding: 36px;
+                  position: relative;
+                  overflow: hidden;
+                  border-radius: 24px;
+                  font-family: Arial, 'Noto Sans KR', sans-serif;
+                }
+                #cardRoot.card-safe-layout .card-safe-grid {
+                  width: 100%;
+                  height: 100%;
+                  display: grid;
+                  grid-template-columns: minmax(0, 1fr) 360px;
+                  grid-template-rows: 202px 178px;
+                  column-gap: 32px;
+                  row-gap: 20px;
+                  position: relative;
+                  z-index: 1;
+                }
+                #cardRoot.card-safe-layout .card-safe-identity {
+                  grid-column: 1;
+                  grid-row: 1;
+                  min-width: 0;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: flex-start;
+                  justify-content: flex-start;
+                }
+                #cardRoot.card-safe-layout .card-safe-name {
+                  max-width: 100%;
+                  font-size: 40px;
+                  line-height: 1.08;
+                  font-weight: 900;
+                  letter-spacing: 0;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                }
+                #cardRoot.card-safe-layout .card-safe-job {
+                  margin-top: 8px;
+                  max-width: 100%;
+                  font-size: 18px;
+                  line-height: 1.3;
+                  font-weight: 800;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                }
+                #cardRoot.card-safe-layout .card-safe-intro {
+                  margin-top: 16px;
+                  width: min(100%, 420px);
+                  max-height: 88px;
+                  font-size: 15px;
+                  line-height: 1.55;
+                  overflow: hidden;
+                  display: -webkit-box;
+                  -webkit-line-clamp: 3;
+                  -webkit-box-orient: vertical;
+                }
+                #cardRoot.card-safe-layout .card-safe-side {
+                  grid-column: 2;
+                  grid-row: 1;
+                  min-width: 0;
+                  display: grid;
+                  grid-template-columns: 132px minmax(0, 1fr);
+                  gap: 14px;
+                  align-items: start;
+                }
+                #cardRoot.card-safe-layout .card-safe-profile {
+                  width: 132px;
+                  height: 132px;
+                  border-radius: 20px;
+                  overflow: hidden;
+                }
+                #cardRoot.card-safe-layout .card-safe-meta {
+                  min-width: 0;
+                  display: grid;
+                  gap: 7px;
+                }
+                #cardRoot.card-safe-layout .card-safe-row {
+                  min-width: 0;
+                  min-height: 32px;
+                  max-height: 36px;
+                  padding: 7px 10px;
+                  border-radius: 10px;
+                  display: flex;
+                  align-items: center;
+                  font-size: 12.5px;
+                  line-height: 1.25;
+                  overflow: hidden;
+                }
+                #cardRoot.card-safe-layout #portfolioArea {
+                  grid-column: 1;
+                  grid-row: 2;
+                  width: 360px;
+                  height: 178px;
+                  align-self: start;
+                  justify-self: start;
+                  overflow: hidden;
+                }
+                #cardRoot.card-safe-layout #linkArea {
+                  display: none;
+                }
+                """;
+
+        return common + switch (code) {
+            case "simple_white" -> """
+                    #cardRoot.card-safe-simple-white {
+                      background: linear-gradient(180deg, #fffaf0 0%%, #ffffff 62%%, #f8fafc 100%%);
+                      color: #1f2937;
+                      border: 1px solid #eadcc6;
+                      --card-accent: %s;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-grid {
+                      grid-template-columns: 176px minmax(0, 1fr);
+                      grid-template-rows: 162px 218px;
+                      column-gap: 28px;
+                      row-gap: 20px;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-identity {
+                      grid-column: 2;
+                      grid-row: 1;
+                      padding: 8px 0 0;
+                      border-bottom: 1px solid color-mix(in srgb, var(--card-accent) 26%%, #eadcc6);
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-name {
+                      font-size: 38px;
+                      color: #111827;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-job { color: var(--card-accent); }
+                    #cardRoot.card-safe-simple-white .card-safe-intro {
+                      color: #4b5563;
+                      width: min(100%%, 520px);
+                      max-height: 58px;
+                      -webkit-line-clamp: 2;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-side {
+                      grid-column: 1;
+                      grid-row: 1 / span 2;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 12px;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-profile {
+                      width: 146px;
+                      height: 146px;
+                      background: #ffffff;
+                      border: 1px solid var(--card-accent);
+                      box-shadow: 0 10px 24px rgba(15, 23, 42, .06);
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-meta {
+                      gap: 8px;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-row {
+                      color: #374151;
+                      background: rgba(255,255,255,.88);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 35%%, #e7e1d8);
+                    }
+                    #cardRoot.card-safe-simple-white #portfolioArea {
+                      grid-column: 2;
+                      grid-row: 2;
+                      border-radius: 18px;
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 42%%, #e2d8c8);
+                      background: rgba(255,255,255,.78);
+                      box-shadow: 0 18px 40px rgba(120, 90, 50, .09);
+                    }
+                    """.formatted(defaultText(accentColor, "#8a5a2b"));
+            case "portfolio_grid" -> """
+                    #cardRoot.card-safe-portfolio-grid {
+                      background: linear-gradient(135deg, #fff7ed 0%%, %s 48%%, #ecfeff 100%%);
+                      color: #172554;
+                      border: 1px solid #bae6fd;
+                      --card-accent: %s;
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-grid {
+                      grid-template-columns: 360px minmax(0, 1fr);
+                      grid-template-rows: 178px 202px;
+                      column-gap: 28px;
+                      row-gap: 20px;
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-identity {
+                      grid-column: 1;
+                      grid-row: 1;
+                      padding: 20px;
+                      border-radius: 22px;
+                      background: rgba(255,255,255,.72);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 24%%, rgba(14, 116, 144, .18));
+                      box-shadow: 0 14px 32px rgba(14, 116, 144, .08);
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-name {
+                      font-size: 34px;
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-job { color: var(--card-accent); }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-intro {
+                      color: #334155;
+                      max-height: 48px;
+                      -webkit-line-clamp: 2;
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-side {
+                      grid-column: 2;
+                      grid-row: 1 / span 2;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 14px;
+                      padding: 18px;
+                      border-radius: 22px;
+                      background: rgba(255,255,255,.58);
+                      border: 1px solid rgba(14, 116, 144, .14);
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-profile {
+                      width: 150px;
+                      height: 150px;
+                      background: rgba(255,255,255,.9);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 40%%, rgba(14, 116, 144, .24));
+                      box-shadow: 0 14px 32px rgba(14, 116, 144, .12);
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-meta {
+                      grid-template-columns: 1fr 1fr;
+                      gap: 8px;
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-row {
+                      color: #164e63;
+                      background: rgba(255,255,255,.72);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 32%%, rgba(14, 116, 144, .18));
+                    }
+                    #cardRoot.card-safe-portfolio-grid #portfolioArea {
+                      grid-column: 1;
+                      grid-row: 2;
+                      border-radius: 20px;
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 45%%, rgba(14, 116, 144, .28));
+                      background: rgba(15, 23, 42, .82);
+                      box-shadow: 0 20px 42px rgba(15, 23, 42, .16);
+                    }
+                    """.formatted(defaultText(backgroundColor, "#f0fdf4"), defaultText(accentColor, "#0f766e"));
+            default -> """
+                    #cardRoot.card-safe-modern-dark {
+                      background: linear-gradient(135deg, #07111f 0%%, %s 52%%, #063b3b 100%%);
+                      color: #f8fafc;
+                      border: 1px solid rgba(56, 189, 248, .22);
+                      --card-accent: %s;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-grid {
+                      grid-template-columns: minmax(0, 1fr) 320px;
+                      grid-template-rows: 184px 196px;
+                      column-gap: 40px;
+                      row-gap: 20px;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-identity {
+                      grid-column: 1;
+                      grid-row: 1 / span 2;
+                      justify-content: center;
+                      padding: 0 28px 0 0;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-name {
+                      font-size: 46px;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-job { color: var(--card-accent); }
+                    #cardRoot.card-safe-modern-dark .card-safe-intro {
+                      color: #cbd5e1;
+                      width: min(100%%, 430px);
+                      max-height: 112px;
+                      -webkit-line-clamp: 4;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-side {
+                      grid-column: 2;
+                      grid-row: 1;
+                      display: grid;
+                      grid-template-columns: 120px minmax(0, 1fr);
+                      gap: 12px;
+                      align-items: start;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-profile {
+                      width: 120px;
+                      height: 120px;
+                      background: rgba(255,255,255,.08);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 38%%, rgba(148, 163, 184, .32));
+                      box-shadow: 0 18px 42px rgba(0,0,0,.24);
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-row {
+                      color: #e2e8f0;
+                      background: rgba(15,23,42,.56);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 28%%, rgba(56,189,248,.16));
+                    }
+                    #cardRoot.card-safe-modern-dark #portfolioArea {
+                      grid-column: 2;
+                      grid-row: 2;
+                      border-radius: 20px;
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 38%%, rgba(56,189,248,.25));
+                      background: rgba(2,6,23,.62);
+                      box-shadow: 0 20px 44px rgba(0,0,0,.22);
+                    }
+                    """.formatted(defaultText(backgroundColor, "#0f172a"), defaultText(accentColor, "#67e8f9"));
+        };
+    }
+
     private String applyBusinessText(String html, BusinessCard card) {
         String updated = html == null ? "" : html;
         Map<String, String> values = Map.of(
@@ -197,6 +575,512 @@ public class HtmlExportService {
         return replaceElementHtml(html, "profileImage", imageHtml);
     }
 
+    private String ensureRequiredElementsExist(String html, BusinessCard card) {
+        String updated = html == null ? "" : html;
+        ElementBlock cardRoot = findElementById(updated, "cardRoot", 0);
+        if (cardRoot == null) {
+            return updated;
+        }
+
+        List<String> missingElements = new ArrayList<>();
+        if (card.hasProfileImage() && findElementById(updated, "profileImage", 0) == null) {
+            missingElements.add("""
+                    <div id="profileImage" class="card-profile-fallback" style="position:absolute; right:48px; top:42px; width:140px; height:140px; border-radius:24px; overflow:hidden; z-index:3;"></div>
+                    """.strip());
+        }
+        if (findElementById(updated, "portfolioArea", 0) == null) {
+            missingElements.add("""
+                    <div id="portfolioArea" class="card-portfolio" style="position:absolute; right:48px; bottom:36px; width:360px; height:178px;"></div>
+                    """.strip());
+        }
+        if (findElementById(updated, "linkArea", 0) == null) {
+            missingElements.add("""
+                    <div id="linkArea" class="card-link" style="display:none;"></div>
+                    """.strip());
+        }
+        if (missingElements.isEmpty()) {
+            return updated;
+        }
+
+        String insertion = "\n" + String.join("\n", missingElements) + "\n";
+        return updated.substring(0, cardRoot.closeStart())
+                + insertion
+                + updated.substring(cardRoot.closeStart());
+    }
+
+    private String keepRequiredElementsInsideCardRoot(String html) {
+        String updated = html == null ? "" : html;
+        ElementBlock cardRoot = findElementById(updated, "cardRoot", 0);
+        if (cardRoot == null) {
+            return updated;
+        }
+
+        List<ElementBlock> misplacedElements = new ArrayList<>();
+        for (String id : CARD_CHILD_IDS) {
+            misplacedElements.addAll(findElementsOutsideCardRoot(updated, id, cardRoot));
+        }
+        if (misplacedElements.isEmpty()) {
+            return updated;
+        }
+
+        misplacedElements.sort((left, right) -> Integer.compare(right.start(), left.start()));
+        List<String> movedHtml = new ArrayList<>();
+        for (ElementBlock element : misplacedElements) {
+            movedHtml.add(0, element.html());
+            updated = updated.substring(0, element.start()) + updated.substring(element.end());
+        }
+
+        ElementBlock updatedCardRoot = findElementById(updated, "cardRoot", 0);
+        if (updatedCardRoot == null) {
+            return updated;
+        }
+
+        String insertion = "\n" + String.join("\n", movedHtml) + "\n";
+        return updated.substring(0, updatedCardRoot.closeStart())
+                + insertion
+                + updated.substring(updatedCardRoot.closeStart());
+    }
+
+    private String applyLayoutJsonStyles(String html, String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return html;
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(layoutJson);
+            if (!isUserDrawingLayoutJson(root)) {
+                return html;
+            }
+            JsonNode elements = root.path("elements");
+            if (!elements.isArray()) {
+                return html;
+            }
+
+            int sourceWidth = positiveOrDefault(root.path("canvasWidth").asInt(CARD_WIDTH), CARD_WIDTH);
+            int sourceHeight = positiveOrDefault(root.path("canvasHeight").asInt(CARD_HEIGHT), CARD_HEIGHT);
+            String updated = html == null ? "" : html;
+            List<String> layoutRoles = new ArrayList<>();
+            for (JsonNode element : elements) {
+                String role = text(element.path("role").asText()).trim();
+                if (isCardChildRole(role) && !"linkArea".equals(role) && !layoutRoles.contains(role)) {
+                    layoutRoles.add(role);
+                }
+            }
+            updated = moveElementsToCardRoot(updated, layoutRoles);
+
+            for (JsonNode element : elements) {
+                String role = text(element.path("role").asText()).trim();
+                if (!isCardChildRole(role) || "linkArea".equals(role)) {
+                    continue;
+                }
+                if (!element.has("x") || !element.has("y") || !element.has("width") || !element.has("height")) {
+                    continue;
+                }
+
+                int x = scaleCoordinate(element.path("x").asInt(), sourceWidth, CARD_WIDTH);
+                int y = scaleCoordinate(element.path("y").asInt(), sourceHeight, CARD_HEIGHT);
+                int width = scaleCoordinate(element.path("width").asInt(), sourceWidth, CARD_WIDTH);
+                int height = scaleCoordinate(element.path("height").asInt(), sourceHeight, CARD_HEIGHT);
+                LayoutBox box = clampLayoutBox(role, x, y, width, height);
+                updated = addInlineStyleToElement(updated, role, buildLayoutStyle(role, box), false);
+            }
+            return updated;
+        } catch (Exception ignored) {
+            return html;
+        }
+    }
+
+    private boolean isUserDrawingLayoutJson(String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return false;
+        }
+
+        try {
+            return isUserDrawingLayoutJson(objectMapper.readTree(layoutJson));
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private boolean isUserDrawingLayoutJson(JsonNode root) {
+        return root != null
+                && root.has("canvasWidth")
+                && root.has("canvasHeight")
+                && root.path("elements").isArray();
+    }
+
+    private String extractTemplateCode(String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return "";
+        }
+
+        try {
+            return text(objectMapper.readTree(layoutJson).path("templateCode").asText());
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private String extractCssColor(String layoutJson, String fieldName) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return "";
+        }
+
+        try {
+            return sanitizeCssColor(objectMapper.readTree(layoutJson).path(fieldName).asText());
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private String sanitizeCssColor(String value) {
+        String color = text(value).trim();
+        if (Pattern.compile("^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$").matcher(color).matches()) {
+            return color.toUpperCase();
+        }
+        return "";
+    }
+
+    private String normalizeTemplateCode(String templateCode) {
+        String value = text(templateCode).trim().toLowerCase();
+        return switch (value) {
+            case "simple_white", "portfolio_grid" -> value;
+            default -> "modern_dark";
+        };
+    }
+
+    private String moveElementsToCardRoot(String html, List<String> roles) {
+        if (roles.isEmpty()) {
+            return html;
+        }
+
+        ElementBlock cardRoot = findElementById(html, "cardRoot", 0);
+        if (cardRoot == null) {
+            return html;
+        }
+
+        List<ElementBlock> roleElements = new ArrayList<>();
+        for (String role : roles) {
+            ElementBlock element = findElementById(html, role, 0);
+            if (element != null && element.start() > cardRoot.openEnd() && element.end() <= cardRoot.closeStart()) {
+                roleElements.add(element);
+            }
+        }
+        if (roleElements.isEmpty()) {
+            return html;
+        }
+
+        roleElements.sort((left, right) -> Integer.compare(right.start(), left.start()));
+        List<String> movedHtml = new ArrayList<>();
+        String updated = html;
+        for (ElementBlock element : roleElements) {
+            movedHtml.add(0, element.html());
+            updated = updated.substring(0, element.start()) + updated.substring(element.end());
+        }
+
+        ElementBlock updatedCardRoot = findElementById(updated, "cardRoot", 0);
+        if (updatedCardRoot == null) {
+            return updated;
+        }
+        return updated.substring(0, updatedCardRoot.closeStart())
+                + "\n" + String.join("\n", movedHtml) + "\n"
+                + updated.substring(updatedCardRoot.closeStart());
+    }
+
+    private boolean isCardChildRole(String role) {
+        for (String cardChildId : CARD_CHILD_IDS) {
+            if (cardChildId.equals(role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int positiveOrDefault(int value, int fallback) {
+        return value > 0 ? value : fallback;
+    }
+
+    private int scaleCoordinate(int value, int sourceSize, int targetSize) {
+        if (sourceSize <= 0 || sourceSize == targetSize) {
+            return value;
+        }
+        return Math.round(value * (targetSize / (float) sourceSize));
+    }
+
+    private LayoutBox clampLayoutBox(String role, int x, int y, int width, int height) {
+        int safeWidth = Math.max(minWidth(role), Math.min(width, CARD_WIDTH));
+        int safeHeight = Math.max(minHeight(role), Math.min(height, CARD_HEIGHT));
+        int safeX = Math.max(0, Math.min(x, CARD_WIDTH - safeWidth));
+        int safeY = Math.max(0, Math.min(y, CARD_HEIGHT - safeHeight));
+        return new LayoutBox(safeX, safeY, safeWidth, safeHeight);
+    }
+
+    private int minWidth(String role) {
+        return switch (role) {
+            case "profileImage" -> 72;
+            case "nameText", "jobText" -> 100;
+            case "emailText" -> 210;
+            case "phoneText" -> 170;
+            case "introText" -> 180;
+            case "portfolioArea" -> EXTRA_AREA_WIDTH;
+            default -> 80;
+        };
+    }
+
+    private int minHeight(String role) {
+        return switch (role) {
+            case "profileImage" -> 72;
+            case "nameText", "jobText", "emailText", "phoneText" -> 36;
+            case "introText" -> 70;
+            case "portfolioArea" -> EXTRA_AREA_HEIGHT;
+            default -> 24;
+        };
+    }
+
+    private String buildLayoutStyle(String role, LayoutBox box) {
+        StringBuilder style = new StringBuilder();
+        style.append("position:absolute; left:")
+                .append(box.x())
+                .append("px; top:")
+                .append(box.y())
+                .append("px; width:")
+                .append(box.width())
+                .append("px; ");
+        style.append("height:").append(box.height()).append("px; overflow:hidden; ");
+        if ("emailText".equals(role) || "phoneText".equals(role)) {
+            style.append("padding:12px 14px; border-radius:16px; z-index:2; display:flex; align-items:center; ");
+        } else if (!"profileImage".equals(role) && !"portfolioArea".equals(role)) {
+            style.append("z-index:2; ");
+        }
+        if ("profileImage".equals(role)) {
+            style.append("z-index:3; ");
+        }
+        return style.toString();
+    }
+
+    private String applyRequiredElementLayoutFallbacks(String html, String css, boolean useAbsoluteFallbacks) {
+        String updated = html == null ? "" : html;
+        if (!useAbsoluteFallbacks) {
+            return updated;
+        }
+
+        updated = addInlineStyleToElement(updated, "profileImage", "position:absolute; overflow:hidden; z-index:3;", false);
+
+        boolean phoneNeedsFallback = needsLooseContactFallback(updated, css, "phoneText");
+        boolean emailNeedsFallback = needsLooseContactFallback(updated, css, "emailText");
+        boolean contactNeedsFallback = phoneNeedsFallback || emailNeedsFallback;
+
+        if (phoneNeedsFallback) {
+            updated = addInlineStyleToElement(updated, "phoneText",
+                    "position:absolute; left:36px; top:344px; width:250px; min-height:44px; padding:12px 14px; border-radius:16px; z-index:2; display:flex; align-items:center;",
+                    true);
+        }
+
+        if (emailNeedsFallback) {
+            updated = addInlineStyleToElement(updated, "emailText",
+                    "position:absolute; left:36px; top:396px; width:250px; min-height:44px; padding:12px 14px; border-radius:16px; z-index:2; display:flex; align-items:center;",
+                    true);
+        }
+
+        ElementBlock company = findElementById(updated, "companyText", 0);
+        if (company != null && !isInsideClassBlock(updated, company, "card-meta")
+                && !hasPositionRule(css, "companyText")) {
+            updated = addInlineStyleToElement(updated, "companyText",
+                    "position:absolute; left:36px; top:" + (contactNeedsFallback ? 276 : 386) + "px; width:220px; min-height:18px; font-size:13px; line-height:1.25; z-index:2;",
+                    true);
+        }
+
+        ElementBlock department = findElementById(updated, "departmentText", 0);
+        if (department != null && !isInsideClassBlock(updated, department, "card-meta")
+                && !hasPositionRule(css, "departmentText")) {
+            updated = addInlineStyleToElement(updated, "departmentText",
+                    "position:absolute; left:36px; top:" + (contactNeedsFallback ? 300 : 408) + "px; width:220px; min-height:18px; font-size:12px; line-height:1.25; z-index:2;",
+                    true);
+        }
+        return updated;
+    }
+
+    private boolean needsLooseContactFallback(String html, String css, String id) {
+        ElementBlock element = findElementById(html, id, 0);
+        if (element == null || isInsideClassBlock(html, element, "card-contactGroup")) {
+            return false;
+        }
+
+        String openTag = html.substring(element.start(), element.openEnd());
+        return !hasStyleAttribute(openTag) && !hasPositionRule(css, id);
+    }
+
+    private boolean hasPositionRule(String css, String id) {
+        Pattern rulePattern = Pattern.compile("(?is)#[a-zA-Z0-9_-]*" + Pattern.quote(id) + "[^{]*\\{(.*?)\\}");
+        java.util.regex.Matcher matcher = rulePattern.matcher(css == null ? "" : css);
+        while (matcher.find()) {
+            String body = matcher.group(1).toLowerCase();
+            if (body.contains("position:")
+                    || readPixelProperty(body, "left") != null
+                    || readPixelProperty(body, "right") != null
+                    || readPixelProperty(body, "top") != null
+                    || readPixelProperty(body, "bottom") != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String addInlineStyleToElement(String html, String id, String style, boolean onlyWhenNoInlineStyle) {
+        ElementBlock element = findElementById(html, id, 0);
+        if (element == null) {
+            return html;
+        }
+
+        String openTag = html.substring(element.start(), element.openEnd());
+        if (onlyWhenNoInlineStyle && hasStyleAttribute(openTag)) {
+            return html;
+        }
+
+        String fixedOpenTag = appendInlineStyle(openTag, style);
+        return html.substring(0, element.start())
+                + fixedOpenTag
+                + html.substring(element.openEnd());
+    }
+
+    private String appendInlineStyle(String openTag, String style) {
+        Pattern stylePattern = Pattern.compile("(?is)\\bstyle\\s*=\\s*([\"'])(.*?)\\1");
+        java.util.regex.Matcher matcher = stylePattern.matcher(openTag);
+        if (matcher.find()) {
+            String mergedStyle = removePropertiesPresentIn(matcher.group(2).stripTrailing(), style);
+            if (!mergedStyle.endsWith(";")) {
+                mergedStyle += ";";
+            }
+            mergedStyle += " " + style;
+            return matcher.replaceFirst("style=" + matcher.group(1)
+                    + java.util.regex.Matcher.quoteReplacement(mergedStyle)
+                    + matcher.group(1));
+        }
+        int insertAt = openTag.endsWith("/>") ? openTag.length() - 2 : openTag.length() - 1;
+        return openTag.substring(0, insertAt)
+                + " style=\"" + attr(style) + "\""
+                + openTag.substring(insertAt);
+    }
+
+    private String removePropertiesPresentIn(String currentStyle, String nextStyle) {
+        String updated = currentStyle;
+        String[] properties = {
+                "position",
+                "left",
+                "top",
+                "right",
+                "bottom",
+                "width",
+                "height",
+                "min-height",
+                "max-height",
+                "overflow",
+                "z-index",
+                "display",
+                "align-items",
+                "padding",
+                "border-radius"
+        };
+        String next = nextStyle.toLowerCase();
+        for (String property : properties) {
+            if (next.contains(property.toLowerCase() + ":")) {
+                updated = removeProperty(updated, property);
+            }
+        }
+        return updated.strip();
+    }
+
+    private boolean hasStyleAttribute(String openTag) {
+        return Pattern.compile("(?is)\\bstyle\\s*=").matcher(openTag).find();
+    }
+
+    private boolean isInsideClassBlock(String html, ElementBlock child, String className) {
+        Pattern pattern = Pattern.compile("(?is)<([a-zA-Z0-9]+)(?=[^>]*\\bclass\\s*=\\s*([\"'])(?:(?!\\2).)*\\b"
+                + Pattern.quote(className)
+                + "\\b(?:(?!\\2).)*\\2)[^>]*>");
+        java.util.regex.Matcher matcher = pattern.matcher(html);
+        while (matcher.find()) {
+            String openTag = matcher.group();
+            if (!hasClass(openTag, className)) {
+                continue;
+            }
+            int closeEnd = findMatchingCloseTag(html, matcher.group(1).toLowerCase(), matcher.end());
+            if (closeEnd < 0) {
+                continue;
+            }
+            if (matcher.start() < child.start() && child.end() <= closeEnd) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasClass(String openTag, String className) {
+        Pattern classPattern = Pattern.compile("(?is)\\bclass\\s*=\\s*([\"'])(.*?)\\1");
+        java.util.regex.Matcher matcher = classPattern.matcher(openTag);
+        if (!matcher.find()) {
+            return false;
+        }
+        String[] classes = matcher.group(2).trim().split("\\s+");
+        for (String classValue : classes) {
+            if (className.equals(classValue)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<ElementBlock> findElementsOutsideCardRoot(String html, String id, ElementBlock cardRoot) {
+        List<ElementBlock> elements = new ArrayList<>();
+        int cursor = 0;
+        while (cursor < html.length()) {
+            ElementBlock element = findElementById(html, id, cursor);
+            if (element == null) {
+                break;
+            }
+            if (element.start() < cardRoot.openEnd() || element.end() > cardRoot.closeStart()) {
+                elements.add(element);
+            }
+            cursor = Math.max(element.end(), cursor + 1);
+        }
+        return elements;
+    }
+
+    private ElementBlock findElementById(String html, String id, int fromIndex) {
+        Pattern pattern = Pattern.compile("(?is)<([a-zA-Z0-9]+)(?=[^>]*\\bid=[\"']"
+                + Pattern.quote(id) + "[\"'])[^>]*>");
+        java.util.regex.Matcher matcher = pattern.matcher(html);
+        if (!matcher.find(fromIndex)) {
+            return null;
+        }
+
+        String tag = matcher.group(1).toLowerCase();
+        int openStart = matcher.start();
+        int openEnd = matcher.end();
+        String openTag = html.substring(openStart, openEnd);
+        if (isVoidElement(tag) || openTag.stripTrailing().endsWith("/>")) {
+            return new ElementBlock(openStart, openEnd, openEnd, openEnd, html.substring(openStart, openEnd));
+        }
+
+        int closeEnd = findMatchingCloseTag(html, tag, openEnd);
+        if (closeEnd < 0) {
+            return null;
+        }
+
+        int closeStart = html.toLowerCase().lastIndexOf("</" + tag + ">", closeEnd);
+        if (closeStart < openEnd) {
+            return null;
+        }
+        return new ElementBlock(openStart, openEnd, closeStart, closeEnd, html.substring(openStart, closeEnd));
+    }
+
+    private boolean isVoidElement(String tag) {
+        return switch (tag) {
+            case "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr" -> true;
+            default -> false;
+        };
+    }
+
     private String replaceElementText(String html, String id, String value) {
         String idPattern = Pattern.quote(id);
         Pattern pattern = Pattern.compile("(?is)<([a-zA-Z0-9]+)(?=[^>]*\\bid=[\"']" + idPattern + "[\"'])[^>]*>");
@@ -210,7 +1094,14 @@ public class HtmlExportService {
             int openEnd = matcher.end();
             int closeEnd = findMatchingCloseTag(html, tag, openEnd);
             if (closeEnd < 0) {
-                cursor = openEnd;
+                int nextTag = html.indexOf('<', openEnd);
+                if (nextTag < 0) {
+                    nextTag = html.length();
+                }
+                updated.append(html, cursor, openEnd);
+                updated.append(value);
+                updated.append("</").append(tag).append(">");
+                cursor = nextTag;
                 continue;
             }
 
@@ -271,14 +1162,79 @@ public class HtmlExportService {
                 || lower.contains("#linkarea:after");
     }
 
+    private String repairMalformedClosingTags(String html) {
+        return (html == null ? "" : html).replaceAll("(?i)(?<!<)/div>", "</div>");
+    }
+
+    private boolean needsExportRepair(String html) {
+        String value = html == null ? "" : html;
+        if (Pattern.compile("(?i)(?<!<)/div>").matcher(value).find()) {
+            return true;
+        }
+        if (hasElementWithClassWithoutInlineStyle(value, "profileImage", "card-profile-wrap")) {
+            return true;
+        }
+
+        ElementBlock company = findElementById(value, "companyText", 0);
+        if (company != null && !isInsideClassBlock(value, company, "card-meta")
+                && hasElementWithClassWithoutInlineStyle(value, "companyText", "card-meta-item")) {
+            return true;
+        }
+
+        ElementBlock department = findElementById(value, "departmentText", 0);
+        if (department != null && !isInsideClassBlock(value, department, "card-meta")
+                && hasElementWithClassWithoutInlineStyle(value, "departmentText", "card-meta-item")) {
+            return true;
+        }
+
+        ElementBlock phone = findElementById(value, "phoneText", 0);
+        if (phone != null && !isInsideClassBlock(value, phone, "card-contactGroup")
+                && hasElementWithClassWithoutInlineStyle(value, "phoneText", "card-contact")) {
+            return true;
+        }
+
+        ElementBlock email = findElementById(value, "emailText", 0);
+        if (email != null && !isInsideClassBlock(value, email, "card-contactGroup")
+                && hasElementWithClassWithoutInlineStyle(value, "emailText", "card-contact")) {
+            return true;
+        }
+
+        boolean hasOldMetaFallback = hasFallbackStyle(value, "companyText", "top:386px");
+        boolean hasDrawingMetaFallback = hasFallbackStyle(value, "companyText", "top:276px")
+                || hasFallbackStyle(value, "departmentText", "top:300px");
+        boolean hasContactFallback = hasFallbackStyle(value, "phoneText", "top:344px")
+                || hasFallbackStyle(value, "emailText", "top:396px");
+        return (hasOldMetaFallback || hasDrawingMetaFallback) && hasContactFallback;
+    }
+
+    private boolean hasElementWithClassWithoutInlineStyle(String html, String id, String className) {
+        ElementBlock element = findElementById(html, id, 0);
+        if (element == null) {
+            return false;
+        }
+
+        String openTag = html.substring(element.start(), element.openEnd());
+        return hasClass(openTag, className) && !hasStyleAttribute(openTag);
+    }
+
+    private boolean hasFallbackStyle(String html, String id, String styleFragment) {
+        ElementBlock element = findElementById(html, id, 0);
+        if (element == null) {
+            return false;
+        }
+
+        String openTag = html.substring(element.start(), element.openEnd()).replace(" ", "").toLowerCase();
+        return openTag.contains(styleFragment.replace(" ", "").toLowerCase());
+    }
+
     private String keepExtraAreaInlineStylesInsideCard(String html) {
         String updated = html == null ? "" : html;
-        updated = keepInlineAreaInsideCard(updated, "portfolioArea", EXTRA_AREA_WIDTH);
-        updated = keepInlineAreaInsideCard(updated, "linkArea", Math.min(EXTRA_AREA_WIDTH, 360));
+        updated = keepInlineAreaInsideCard(updated, "portfolioArea", EXTRA_AREA_WIDTH, EXTRA_AREA_HEIGHT);
+        updated = keepInlineAreaInsideCard(updated, "linkArea", Math.min(EXTRA_AREA_WIDTH, 360), LINK_AREA_HEIGHT);
         return updated;
     }
 
-    private String keepInlineAreaInsideCard(String html, String id, int fallbackWidth) {
+    private String keepInlineAreaInsideCard(String html, String id, int fallbackWidth, int fallbackHeight) {
         Pattern tagPattern = Pattern.compile("(?is)<([a-zA-Z0-9]+)(?=[^>]*\\bid=[\"']"
                 + Pattern.quote(id) + "[\"'])[^>]*>");
         java.util.regex.Matcher matcher = tagPattern.matcher(html);
@@ -286,14 +1242,14 @@ public class HtmlExportService {
 
         while (matcher.find()) {
             String tag = matcher.group();
-            String fixedTag = fixInlineStyleOnTag(tag, fallbackWidth);
+            String fixedTag = fixInlineStyleOnTag(tag, fallbackWidth, fallbackHeight);
             matcher.appendReplacement(updated, java.util.regex.Matcher.quoteReplacement(fixedTag));
         }
         matcher.appendTail(updated);
         return updated.toString();
     }
 
-    private String fixInlineStyleOnTag(String tag, int fallbackWidth) {
+    private String fixInlineStyleOnTag(String tag, int fallbackWidth, int fallbackHeight) {
         Pattern stylePattern = Pattern.compile("(?is)\\bstyle\\s*=\\s*([\"'])(.*?)\\1");
         java.util.regex.Matcher styleMatcher = stylePattern.matcher(tag);
         if (!styleMatcher.find()) {
@@ -301,7 +1257,7 @@ public class HtmlExportService {
         }
 
         String style = styleMatcher.group(2);
-        String fixedStyle = keepAreaStyleInsideCard(style, fallbackWidth);
+        String fixedStyle = keepAreaStyleInsideCard(style, fallbackWidth, fallbackHeight);
         return styleMatcher.replaceFirst("style=" + styleMatcher.group(1)
                 + java.util.regex.Matcher.quoteReplacement(fixedStyle)
                 + styleMatcher.group(1));
@@ -309,22 +1265,22 @@ public class HtmlExportService {
 
     private String keepExtraAreasInsideCard(String css) {
         String updated = css == null ? "" : css;
-        updated = keepAreaInsideCard(updated, "portfolioArea", EXTRA_AREA_WIDTH);
-        updated = keepAreaInsideCard(updated, "linkArea", Math.min(EXTRA_AREA_WIDTH, 360));
-        updated = keepAreaClassInsideCard(updated, "card-portfolio", EXTRA_AREA_WIDTH);
-        updated = keepAreaClassInsideCard(updated, "card-links", Math.min(EXTRA_AREA_WIDTH, 360));
+        updated = keepAreaInsideCard(updated, "portfolioArea", EXTRA_AREA_WIDTH, EXTRA_AREA_HEIGHT);
+        updated = keepAreaInsideCard(updated, "linkArea", Math.min(EXTRA_AREA_WIDTH, 360), LINK_AREA_HEIGHT);
+        updated = keepAreaClassInsideCard(updated, "card-portfolio", EXTRA_AREA_WIDTH, EXTRA_AREA_HEIGHT);
+        updated = keepAreaClassInsideCard(updated, "card-links", Math.min(EXTRA_AREA_WIDTH, 360), LINK_AREA_HEIGHT);
         return updated;
     }
 
-    private String keepAreaInsideCard(String css, String id, int fallbackWidth) {
-        return keepAreaRuleInsideCard(css, "#[a-zA-Z0-9_-]*" + Pattern.quote(id), fallbackWidth);
+    private String keepAreaInsideCard(String css, String id, int fallbackWidth, int fallbackHeight) {
+        return keepAreaRuleInsideCard(css, "#[a-zA-Z0-9_-]*" + Pattern.quote(id), fallbackWidth, fallbackHeight);
     }
 
-    private String keepAreaClassInsideCard(String css, String className, int fallbackWidth) {
-        return keepAreaRuleInsideCard(css, "\\.[a-zA-Z0-9_-]*" + Pattern.quote(className), fallbackWidth);
+    private String keepAreaClassInsideCard(String css, String className, int fallbackWidth, int fallbackHeight) {
+        return keepAreaRuleInsideCard(css, "\\.[a-zA-Z0-9_-]*" + Pattern.quote(className), fallbackWidth, fallbackHeight);
     }
 
-    private String keepAreaRuleInsideCard(String css, String selectorPattern, int fallbackWidth) {
+    private String keepAreaRuleInsideCard(String css, String selectorPattern, int fallbackWidth, int fallbackHeight) {
         Pattern rulePattern = Pattern.compile("(?is)(" + selectorPattern + "[^{]*\\{)(.*?)(\\})");
         java.util.regex.Matcher matcher = rulePattern.matcher(css);
         StringBuilder updated = new StringBuilder();
@@ -334,33 +1290,53 @@ public class HtmlExportService {
             Integer left = readPixelProperty(body, "left");
             Integer right = readPixelProperty(body, "right");
             Integer width = readPixelProperty(body, "width");
-            if (left == null && right == null) {
+            Integer top = readPixelProperty(body, "top");
+            Integer bottom = readPixelProperty(body, "bottom");
+            Integer height = readPixelProperty(body, "height");
+            if (left == null && right == null && top == null && bottom == null) {
                 matcher.appendReplacement(updated, java.util.regex.Matcher.quoteReplacement(matcher.group()));
                 continue;
             }
 
-            String fixedBody = keepAreaStyleInsideCard(body, fallbackWidth, left, right, width);
+            String fixedBody = keepAreaStyleInsideCard(body, fallbackWidth, fallbackHeight, left, right, width, top, bottom, height);
             matcher.appendReplacement(updated, java.util.regex.Matcher.quoteReplacement(matcher.group(1) + fixedBody + matcher.group(3)));
         }
         matcher.appendTail(updated);
         return updated.toString();
     }
 
-    private String keepAreaStyleInsideCard(String style, int fallbackWidth) {
+    private String keepAreaStyleInsideCard(String style, int fallbackWidth, int fallbackHeight) {
         Integer left = readPixelProperty(style, "left");
         Integer right = readPixelProperty(style, "right");
         Integer width = readPixelProperty(style, "width");
-        if (left == null && right == null) {
+        Integer top = readPixelProperty(style, "top");
+        Integer bottom = readPixelProperty(style, "bottom");
+        Integer height = readPixelProperty(style, "height");
+        if (left == null && right == null && top == null && bottom == null) {
             return style;
         }
-        return keepAreaStyleInsideCard(style, fallbackWidth, left, right, width);
+        return keepAreaStyleInsideCard(style, fallbackWidth, fallbackHeight, left, right, width, top, bottom, height);
     }
 
-    private String keepAreaStyleInsideCard(String style, int fallbackWidth, Integer left, Integer right, Integer width) {
+    private String keepAreaStyleInsideCard(
+            String style,
+            int fallbackWidth,
+            int fallbackHeight,
+            Integer left,
+            Integer right,
+            Integer width,
+            Integer top,
+            Integer bottom,
+            Integer height
+    ) {
         int actualWidth = width == null ? fallbackWidth : Math.min(width, fallbackWidth);
+        int actualHeight = height == null ? fallbackHeight : Math.min(height, fallbackHeight);
         String fixedStyle = style;
         if (width == null || width > fallbackWidth) {
             fixedStyle = writePixelProperty(fixedStyle, "width", fallbackWidth);
+        }
+        if (height == null || height > fallbackHeight) {
+            fixedStyle = writePixelProperty(fixedStyle, "height", fallbackHeight);
         }
         if (left != null) {
             int maxLeft = CARD_WIDTH - SAFE_MARGIN - actualWidth;
@@ -371,6 +1347,16 @@ public class HtmlExportService {
             }
         } else if (right != null && right < SAFE_MARGIN) {
             fixedStyle = writePixelProperty(fixedStyle, "right", SAFE_MARGIN);
+        }
+        if (top != null) {
+            int maxTop = CARD_HEIGHT - SAFE_MARGIN - actualHeight;
+            int safeTop = Math.max(SAFE_MARGIN, Math.min(top, maxTop));
+            if (safeTop != top) {
+                fixedStyle = writePixelProperty(fixedStyle, "top", safeTop);
+                fixedStyle = removeProperty(fixedStyle, "bottom");
+            }
+        } else if (bottom != null && bottom < SAFE_MARGIN) {
+            fixedStyle = writePixelProperty(fixedStyle, "bottom", SAFE_MARGIN);
         }
         return fixedStyle;
     }
@@ -651,35 +1637,41 @@ public class HtmlExportService {
                 .card-extra-empty { min-height: 48px; display: grid; place-items: center; border: 1px dashed rgba(255,255,255,.22); border-radius: 12px; color: inherit; opacity: .42; font-size: 12px; font-weight: 700; }
                 #cardRoot { position: relative; overflow: hidden; }
                 #profileImage { overflow: hidden; }
-                #profileImage img.card-profile-uploaded { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+                #profileImage img.card-profile-uploaded { width: 100%; height: 100%; object-fit: contain; object-position: center; border-radius: inherit; display: block; background: rgba(255,255,255,.92); }
                 #portfolioArea:not(:empty), #linkArea:not(:empty) {
                   box-sizing: border-box;
-                  width: min(360px, calc(100% - 72px)) !important;
-                  max-width: 360px !important;
+                  max-width: min(360px, calc(100% - 72px)) !important;
                   z-index: 5;
                   padding: 18px !important;
-                  border: 1px solid rgba(255,255,255,.18) !important;
+                  border: 1px solid rgba(255,255,255,.24) !important;
                   border-radius: 18px !important;
-                  color: inherit !important;
-                  background: rgba(255,255,255,.08) !important;
+                  color: #f8fafc !important;
+                  background: rgba(15,23,42,.86) !important;
                   backdrop-filter: blur(8px);
-                  box-shadow: none !important;
+                  box-shadow: 0 18px 44px rgba(2,6,23,.22) !important;
                 }
                 #portfolioArea:not(:empty) {
-                  right: 36px !important;
-                  left: auto !important;
                   max-height: 178px;
                 }
                 #linkArea:not(:empty) {
-                  right: 36px !important;
-                  left: auto !important;
                   max-height: 96px;
                 }
                 #portfolioArea:empty, #linkArea:empty { display: none !important; }
                 #portfolioArea, #linkArea { box-sizing: border-box; overflow: hidden; }
-                #portfolioArea .card-extra-title, #linkArea .card-extra-title { color: inherit !important; }
+                #portfolioArea .card-extra-title, #linkArea .card-extra-title { color: #f8fafc !important; }
                 #portfolioArea .card-extra-list, #linkArea .card-extra-list { max-width: 100%; max-height: 100%; overflow: hidden; }
-                #portfolioArea .card-extra-item, #linkArea .card-extra-item { min-width: 0; max-width: 100%; }
+                #portfolioArea .card-extra-item, #linkArea .card-extra-item {
+                  min-width: 0;
+                  max-width: 100%;
+                  color: #f8fafc !important;
+                  background: rgba(255,255,255,.1) !important;
+                  border-color: rgba(255,255,255,.2) !important;
+                }
+                #portfolioArea .card-extra-empty, #linkArea .card-extra-empty {
+                  color: #cbd5e1 !important;
+                  border-color: rgba(203,213,225,.3) !important;
+                  opacity: .76 !important;
+                }
                 .card-extra-modal-backdrop {
                   position: fixed;
                   inset: 0;
@@ -903,5 +1895,11 @@ public class HtmlExportService {
 
     private String text(String value) {
         return value == null ? "" : value;
+    }
+
+    private record ElementBlock(int start, int openEnd, int closeStart, int end, String html) {
+    }
+
+    private record LayoutBox(int x, int y, int width, int height) {
     }
 }

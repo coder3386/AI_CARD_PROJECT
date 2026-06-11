@@ -167,6 +167,10 @@
     box-shadow: 0 0 0 6px rgba(14, 165, 233, 0.12);
 }
 
+.drawing-shape.fixed-size .drawing-resize-handle {
+    display: none;
+}
+
 .drawing-resize-handle {
     position: absolute;
     z-index: 2;

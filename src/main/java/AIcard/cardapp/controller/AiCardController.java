@@ -25,6 +25,8 @@ import java.net.URI;
 @Controller
 public class AiCardController {
 
+    private static final org.slf4j.Logger userLog = org.slf4j.LoggerFactory.getLogger("USER_LOGGER");
+
     private final AiCardService aiCardService;
     private final CardQrService cardQrService;
     private final CurrentUserService currentUserService;
@@ -71,6 +73,7 @@ public class AiCardController {
             }
             Long cardId = aiCardService.generate(request, userId);
             createQrCode(cardId, httpRequest);
+            userLog.info("[USER-ACTION]|명함 생성 완료. type=text, userId={}, cardId={}, QR 생성 포함", userId, cardId);
             if (aiCardService.isLatestAiResultFallback(cardId)) {
                 return "redirect:/cards/" + cardId + "/ai-fallback?retryType=text";
             }
@@ -101,6 +104,7 @@ public class AiCardController {
             }
             Long cardId = aiCardService.generateDrawing(request, userId);
             createQrCode(cardId, httpRequest);
+            userLog.info("[USER-ACTION]|명함 생성 완료. type=drawing, userId={}, cardId={}, QR 생성 포함", userId, cardId);
             if (aiCardService.isLatestAiResultFallback(cardId)) {
                 return "redirect:/cards/" + cardId + "/ai-fallback?retryType=drawing";
             }

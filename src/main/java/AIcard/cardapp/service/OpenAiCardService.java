@@ -18,6 +18,8 @@ import java.util.Map;
 @Service
 public class OpenAiCardService {
 
+    private static final org.slf4j.Logger userLog = org.slf4j.LoggerFactory.getLogger("USER_LOGGER");
+
     private static final List<String> REQUIRED_IDS = List.of(
             "cardRoot",
             "nameText",
@@ -311,6 +313,33 @@ public class OpenAiCardService {
                 - Choose portfolio_grid for creative, portfolio, designer, project, skill-heavy, visual-grid moods.
                 - Templates are style references, not rigid layout locks. Keep the selected template's mood, palette, and visual language, but freely adjust placement when the user's text or extra items need more room.
                 - For all templates (modern_dark, simple_white, portfolio_grid), choose the final coordinates by content fit. Never reuse a template's original box coordinates if they make introText, contact, or portfolioArea collide.
+                - The three template concepts must have clearly different geometry. Do not create the same layout with only different colors.
+                - If Preferred color is provided, convert it to a CSS hex color and put it in layoutJson.pointColor. Also reflect it visibly in the generated CSS accent color.
+                - layoutJson.pointColor and layoutJson.backgroundColor must be valid CSS hex colors like "#2563EB". Do not return Korean color names in those fields.
+                - If Preferred color is not provided, choose pointColor and backgroundColor from the selected template concept.
+
+                Concept-specific layout rules:
+                - If layoutJson.templateCode is modern_dark:
+                  - Use an asymmetric tech layout with a strong dark navy or black background and cyan, mint, or blue accents.
+                  - Put nameText, jobText, companyText, departmentText, and introText mainly in a left hero column.
+                  - Put profileImage near the upper-right, contact details in a compact right-side panel or row, and portfolioArea in a separate lower-right or bottom-right panel.
+                  - Use glassy panels, thin neon lines, or dashboard-like sections sparingly. Keep the name large and dominant.
+                  - Keep the upper-left hero text zone clean. Do not place decorative circles, badges, blobs, gradients, avatars, or empty shapes over or near nameText, jobText, companyText, departmentText, or introText.
+                  - If decorative shapes are used, they must sit behind the content, avoid the text bounding boxes completely, and never reduce text readability.
+                  - Make portfolioArea fully visible inside cardRoot with at least 36px from the card edge. Its text must be light and readable on the dark background.
+                - If layoutJson.templateCode is simple_white:
+                  - Use a minimal resume-like layout with a mostly white or off-white background, dark text, subtle warm-gray or brown accents, and generous whitespace.
+                  - Avoid dark full-card backgrounds, heavy gradients, large decorative blocks, and many filled panels.
+                  - Use a clean two-column or editorial layout: nameText/jobText/introText on the left, companyText/departmentText/emailText/phoneText as neat rows on the right.
+                  - Do not stack nameText, jobText, introText, profileImage, companyText, departmentText, emailText, and phoneText all in one vertical column. That will exceed the 480px card height.
+                  - Keep profileImage in a separate right/top zone or compact side area. Never place profileImage between introText and the contact/meta rows if that pushes phoneText below the bottom edge.
+                  - All four rows companyText, departmentText, emailText, and phoneText must be fully visible inside cardRoot without page scrolling. If space is tight, reduce gaps, use smaller row heights, or split the rows into a side column.
+                  - Put portfolioArea as a quiet bottom band or subtle lower section with thin separators, not as a heavy colorful card.
+                - If layoutJson.templateCode is portfolio_grid:
+                  - Use a clear creative grid layout, such as 2x2 blocks or a strong left column plus stacked right blocks.
+                  - Give portfolioArea the largest or most visually important block because this template is for projects, skills, and links.
+                  - Put nameText/jobText in one bold identity block, introText or project summary in another block, and contact details in a separate compact block.
+                  - Use stronger creative contrast, visible grid sections, and lively accent colors, but keep every block aligned and non-overlapping.
 
                 Return only this JSON format:
                 {
@@ -340,6 +369,11 @@ public class OpenAiCardService {
                 - Class names must start with card-.
                 - Add editable class to major editable text elements.
                 - Required IDs: cardRoot, nameText, jobText, introText, emailText, phoneText, profileImage, portfolioArea, linkArea.
+                - Return exactly one visible root card element: <div id='cardRoot'>...</div>.
+                - Every required ID and optional companyText/departmentText must be inside cardRoot.
+                - Do not close cardRoot until after all required elements, portfolioArea, and linkArea. Do not return stray closing tags or visible elements outside cardRoot.
+                - Every non-void HTML element must have a valid closing tag such as </div>. Never output malformed text like /div>.
+                - profileImage itself must have visible position, width, height, border-radius, and overflow styling. Do not rely only on a child wrapper for the profile frame.
                 - layoutJson.templateCode must be one of the allowed template_code values, never ai_generated.
                 - Do not create headlineText.
                 - If possible, include companyText and departmentText IDs too.
@@ -365,28 +399,33 @@ public class OpenAiCardService {
                 - portfolioArea can be lower-right, lower-middle, right column, or bottom band depending on which location avoids overlap best.
                 - Give portfolioArea about 360px x 178px of usable space for up to 8 compact items. If the template is too narrow, use a bottom band or a clear side column.
                 - Do not invent placeholder links such as GitHub, Blog, Portfolio, or SNS.
-                - Keep every visual element inside cardRoot. Do not let text overflow outside the 860px x 480px card.
-                - Before returning, do a layout safety check: no visible text may overlap another element, no text may be clipped, and no important element may leave cardRoot.
-                - Section boxes must never overlap or touch each other. introText box, contact box, profileImage, name/job group, portfolioArea, and decorative panels need at least 18px of clear spacing between their visible borders.
-                - Treat portfolioArea as a real occupied panel even though it is empty in your HTML. The server will inject a title and up to 8 buttons later, so reserve the full 360px x 178px rectangle plus clear spacing.
-                - Never place introText, emailText, phoneText, companyText, departmentText, nameText, jobText, profileImage, or decorative panels behind, under, or partly inside the future portfolioArea rectangle.
-                - If there is not enough room for a side portfolioArea, move portfolioArea to a bottom band and move contact/intro above it, or use a clear two-column layout.
-                - Do not return a layout where two absolute-positioned boxes have intersecting x/y/width/height ranges. If two boxes intersect, change x, y, width, height, or font-size until they do not.
-                - If portfolioArea is near the lower-right, introText and contact details must end before portfolioArea begins, or move to the left/upper area. Do not let introText run underneath portfolioArea.
-                - Do not solve crowding by simply drawing semi-transparent boxes on top of each other. Reflow the layout into separate zones instead.
-                - Treat every rounded rectangle or visible panel as a real box for collision checks. The visible borders of introText panels, contact chips, profileImage, and portfolioArea must have clear gaps.
-                - If intro, email, phone, or extra items are long, reduce font size, widen the text box, wrap text, or move the section. A clean readable layout is more important than copying the template's original coordinates.
-                - Keep introText in a bounded readable block. If the intro is long, use a smaller font and line-height, and place it away from portfolioArea and contact details.
-                - Contact details must remain readable and must not sit under portfolioArea. Move them to the left, upper-right, or a separate compact row if the lower-right is occupied.
-                - Avoid large empty decorative boxes when content is crowded. Use decoration only if it does not reduce readable space.
-                - Use CSS box-sizing: border-box and overflow-wrap: anywhere on long text containers where needed.
-                - Treat drawingLayoutJson as a rough wireframe and user intention, not as exact final coordinates.
-                - Preserve the user's intended regions and relative grouping, but refine x, y, width, and height for a clean professional layout.
-                - If the user's drawing is scattered, cramped, overlapping, or visually messy, snap elements to clean alignment, consistent spacing, and a balanced grid.
-                - Do not draw visible outline boxes for every wireframe shape. Convert rough rectangles into polished sections only when they improve the design.
-                - Group related information naturally: name/job/company/department together, contact details together, intro as one readable area, and extra items inside portfolioArea.
-                - Use safe margins of about 36px to 56px and keep consistent gaps between sections.
-                - If the user drew only some required elements, automatically place missing required elements in the remaining space.
+                Layout safety rules:
+                - Keep every visual element inside cardRoot.
+                - STRONGLY PREFER using CSS Flexbox (display: flex) or CSS Grid to group elements naturally without overlapping. Avoid overusing position: absolute for every single element.
+                - NEVER use fixed height (e.g., height: 160px) for text containers like introText, nameText, jobText, companyText, departmentText, emailText, phoneText, or contact boxes. Always use height: auto or min-height so the box can expand vertically if the text is long.
+                - Use a clean grid-like composition with clear zones. Align left edges, top edges, or center lines where possible.
+                - Section boxes must never overlap, touch, or visually crowd each other. If using position: absolute, calculate coordinates carefully to allow elements above them to expand without colliding.
+                - Keep at least 24px of visible gap between introText box, contact box, profileImage, name/job group, portfolioArea, and decorative panels.
+                - Keep every section at least 28px away from the cardRoot outer edge. Never set top, left, right, or bottom close enough that text touches or clips at the edge.
+                - Do not place emailText or phoneText at the extreme top-left, top-right, bottom-left, or bottom-right corner unless the requested layout explicitly shows a full contact box there with enough padding.
+                - Prefer grouping emailText and phoneText together in one contact zone. If separated, they must still align cleanly and have matching widths, padding, and style.
+                - If you create a contact group wrapper, phoneText and emailText must be actual children inside that wrapper. Otherwise, give phoneText and emailText their own absolute/flex-grid positioning.
+                - Contact boxes should be at least 210px wide for email and at least 170px wide for phone, unless the text is shorter and still fully visible.
+                - phoneText and emailText must be fully visible inside the 860px x 480px cardRoot. Never let phoneText sit below the visible card or depend on browser/page scrolling.
+                - Do not stack more than five major vertical blocks in one column inside cardRoot. Major blocks include name/job group, introText, profileImage, company/department rows, email/phone rows, and portfolioArea. Split crowded content into two columns or a top/bottom layout.
+                - Before returning, estimate the total vertical height of each column including padding and gaps. If any column exceeds about 410px of inner content height, reduce gaps/font sizes or move some blocks to another column.
+                - If portfolioArea would collide with introText or contact details, move or resize the sections instead of stacking them.
+                - Treat portfolioArea as a real occupied panel even if your HTML leaves it empty. The server will inject content later, so reserve EXACTLY the 360px x 178px rectangle. Do not make it arbitrarily larger (e.g., 800px wide) than the reserved size.
+                - No other section may be behind, under, inside, or touching the future portfolioArea rectangle. Force portfolioArea to sit clear of long text blocks.
+                - If the generated layout puts too many regions in one column, reorganize into a clean two-column or top/bottom layout while preserving the selected concept's rough intent.
+                - Do not create too many visible boxes if that creates a cluttered layout. Convert them into polished aligned sections with consistent padding, radius, and spacing.
+                - Keep introText in a bounded readable block. If the intro is long, allow the block to expand downward (height: auto), reduce font size, or wrap text naturally.
+                - Contact details must remain readable, fully inside their box, and must not sit under portfolioArea.
+                - Text inside any bounded region must use display: flex or equivalent centering when appropriate, with consistent padding and line-height. No text should sit awkwardly at a bottom-left corner.
+                - Do a final mental bounding-box check before answering: every visible text line must be fully inside cardRoot, every panel must fit in 860x480, and no section may cover another section.
+                - Avoid large empty decorative boxes when content is crowded.
+                - MANDATORY CSS: Use box-sizing: border-box, word-break: keep-all, and overflow-wrap: break-word (or overflow-wrap: anywhere) on all text containers to prevent text from breaking out of boxes.
+                - Use safe margins of about 36px to 56px and consistent gaps between sections.
                 - Even if drawingLayoutJson is empty, generate a complete card using the text description and default layout.
                 """.formatted(
                 safe(card.getDisplayName()),
@@ -427,6 +466,8 @@ public class OpenAiCardService {
                 - Drawing description: %s
                 - Drawing layout JSON:
                 %s
+                - Interpreted drawing placement constraints:
+                %s
 
                 Extra portfolio, skill, certificate, and link items:
                 %s
@@ -434,12 +475,19 @@ public class OpenAiCardService {
                 Core drawing rules:
                 - Do not select an existing template.
                 - Set layoutJson.templateCode exactly to "drawing_custom".
+                - The drawing canvas is exactly 860px x 480px and uses the same coordinate system as cardRoot.
+                - Every drawingLayoutJson element with a non-empty role must be mapped to the matching required ID in HTML, CSS, and layoutJson.elements.
+                - Keep each mapped element in the same rough zone and relative order as the drawing. Do not move a left-side drawing element to the right side, or a top element to the bottom, unless it would otherwise overlap or clip.
+                - Treat drawn boxes as placement anchors, not final visual boxes. Preserve the intended zone, then polish spacing, alignment, sizing, and visual grouping.
+                - When cleaning the sketch, keep each element center close to the drawn center, but you may nudge, resize, align, or merge nearby regions to make the card look professionally designed.
+                - Use absolute or clearly bounded positioning for the main drawn regions so the final result follows the sketch instead of falling back to a generic template layout.
                 - Treat drawingLayoutJson as the user's intended placement and grouping.
                 - Preserve the relative intent of the sketch, but do not copy messy or cramped coordinates blindly.
                 - If the sketch is too close to an edge, overlapping, too small, or visually rough, snap it into clean alignment.
                 - Use the user's sketch to decide where profileImage, nameText, jobText, introText, emailText, phoneText, portfolioArea, and linkArea should roughly go.
                 - If the user did not draw a required element, place it naturally in the remaining space.
                 - The final card must look polished, not like raw wireframe boxes.
+                - Do not render a separate visible rounded panel for every drawn rectangle. Use visible panels only for meaningful grouped sections; simple text can sit directly in open space or in one refined shared group.
                 - Use the drawing description only as design guidance. Do not copy it into introText unless the same content was provided as Intro.
 
                 Return only this JSON format:
@@ -470,10 +518,20 @@ public class OpenAiCardService {
                 - Class names must start with card-.
                 - Add editable class to major editable text elements.
                 - Required IDs: cardRoot, nameText, jobText, introText, emailText, phoneText, profileImage, portfolioArea, linkArea.
+                - Return exactly one visible root card element: <div id='cardRoot'>...</div>.
+                - Every required ID and optional companyText/departmentText must be inside cardRoot.
+                - Do not close cardRoot until after all required elements, portfolioArea, and linkArea. Do not return stray closing tags or visible elements outside cardRoot.
+                - Every non-void HTML element must have a valid closing tag such as </div>. Never output malformed text like /div>.
+                - profileImage itself must have visible position, width, height, border-radius, and overflow styling. Do not rely only on a child wrapper for the profile frame.
                 - If possible, include companyText and departmentText IDs too.
                 - Do not create headlineText.
                 - Use the exact Name value for nameText. Do not add words such as "card", "business card", or "명함" after the name.
                 - Use only the user's provided job title, company, department, intro, email, and phone values. Do not invent missing personal details.
+                - If drawingLayoutJson includes role=nameText, role=jobText, role=companyText, role=departmentText, role=introText, role=emailText, role=phoneText, role=profileImage, or role=portfolioArea, those IDs must be positioned according to the drawn box for that role.
+                - jobText, companyText, and departmentText must be three separate text elements. Never place them on the same x/y coordinates or inside the same tiny box.
+                - If companyText and departmentText are not explicitly drawn, stack them below jobText with clear vertical spacing instead of overlaying them.
+                - nameText must be optically centered and balanced inside its intended region. Do not anchor the name to the lower-left corner of the drawn box.
+                - profileImage must show the full uploaded photo without cropping the face. If the drawn profile box is too short or too wide, refine it into a neat square or portrait frame within the same rough zone.
 
                 Portfolio/extra area rules:
                 - portfolioArea must be a single empty placeholder container. The server will inject the Portfolio / Skills / Links title and all chips/buttons later.
@@ -486,23 +544,27 @@ public class OpenAiCardService {
 
                 Layout safety rules:
                 - Keep every visual element inside cardRoot.
+                - STRONGLY PREFER using CSS Flexbox (display: flex) or CSS Grid to group elements naturally without overlapping. Avoid overusing position: absolute for every single element.
+                - NEVER use fixed height (e.g., height: 160px) for text containers like introText, nameText, jobText, companyText, departmentText, emailText, phoneText, or contact boxes. Always use height: auto or min-height so the box can expand vertically if the text is long.
                 - Use a clean grid-like composition with clear zones. Align left edges, top edges, or center lines where possible.
-                - Section boxes must never overlap, touch, or visually crowd each other.
+                - Section boxes must never overlap, touch, or visually crowd each other. If using position: absolute, calculate coordinates carefully to allow elements above them to expand without colliding.
                 - Keep at least 24px of visible gap between introText box, contact box, profileImage, name/job group, portfolioArea, and decorative panels.
                 - Keep every section at least 28px away from the cardRoot outer edge. Never set top, left, right, or bottom close enough that text touches or clips at the edge.
                 - Do not place emailText or phoneText at the extreme top-left, top-right, bottom-left, or bottom-right corner unless the drawing explicitly shows a full contact box there with enough padding.
                 - Prefer grouping emailText and phoneText together in one contact zone. If separated, they must still align cleanly and have matching widths, padding, and style.
+                - If you create a contact group wrapper, phoneText and emailText must be actual children inside that wrapper. Otherwise, give phoneText and emailText their own absolute/flex-grid positioning.
                 - Contact boxes should be at least 210px wide for email and at least 170px wide for phone, unless the text is shorter and still fully visible.
                 - If portfolioArea would collide with introText or contact details, move or resize the sections instead of stacking them.
-                - Treat portfolioArea as a real occupied panel even if your HTML leaves it empty. The server will inject the Portfolio / Skills / Links title and up to 8 buttons later, so reserve the full 360px x 178px rectangle.
-                - No other section may be behind, under, inside, or touching the future portfolioArea rectangle.
+                - Treat portfolioArea as a real occupied panel even if your HTML leaves it empty. The server will inject content later, so reserve EXACTLY the 360px x 178px rectangle. Do not make it arbitrarily larger (e.g., 800px wide) than the reserved size.
+                - No other section may be behind, under, inside, or touching the future portfolioArea rectangle. Force portfolioArea to sit clear of long text blocks.
                 - If the sketch puts too many regions in one column, reorganize into a clean two-column or top/bottom layout while preserving the user's rough intent.
-                - Do not copy rough drawing boxes as literal visible boxes if that creates a cluttered layout. Convert them into polished aligned sections.
-                - Keep introText in a bounded readable block. If the intro is long, reduce font size, wrap text, or expand the block.
+                - Do not copy rough drawing boxes as literal visible boxes if that creates a cluttered layout. Convert them into polished aligned sections with consistent padding, radius, and spacing.
+                - Keep introText in a bounded readable block. If the intro is long, allow the block to expand downward (height: auto), reduce font size, or wrap text naturally.
                 - Contact details must remain readable, fully inside their box, and must not sit under portfolioArea.
+                - Text inside any bounded region must use display:flex or equivalent centering when appropriate, with consistent padding and line-height. No text should sit awkwardly at a bottom-left corner.
                 - Do a final mental bounding-box check before answering: every visible text line must be fully inside cardRoot, every panel must fit in 860x480, and no section may cover another section.
                 - Avoid large empty decorative boxes when content is crowded.
-                - Use CSS box-sizing: border-box and overflow-wrap: anywhere on long text containers where needed.
+                - MANDATORY CSS: Use box-sizing: border-box, word-break: keep-all, and overflow-wrap: break-word (or overflow-wrap: anywhere) on all text containers to prevent text from breaking out of boxes.
                 - Use safe margins of about 36px to 56px and consistent gaps between sections.
                 """.formatted(
                 safe(card.getDisplayName()),
@@ -514,6 +576,7 @@ public class OpenAiCardService {
                 safe(card.getPhone()),
                 safe(request.getDrawingDescription()),
                 safeLayout(request.getDrawingLayoutJson()),
+                buildDrawingLayoutGuide(request.getDrawingLayoutJson()),
                 buildExtraInfo(request.getExtraItems())
         );
     }
@@ -561,30 +624,48 @@ public class OpenAiCardService {
                 - Do not create html, head, or body tags.
                 - Do not use script tags, iframe tags, or external CDN.
                 - Required IDs: cardRoot, nameText, jobText, introText, emailText, phoneText, profileImage, portfolioArea, linkArea.
+                - Return exactly one visible root card element: <div id='cardRoot'>...</div>.
+                - Every required ID and optional companyText/departmentText must be inside cardRoot.
+                - Do not close cardRoot until after all required elements, portfolioArea, and linkArea. Do not return stray closing tags or visible elements outside cardRoot.
+                - Every non-void HTML element must have a valid closing tag such as </div>. Never output malformed text like /div>.
+                - profileImage itself must have visible position, width, height, border-radius, and overflow styling. Do not rely only on a child wrapper for the profile frame.
+
+                Layout safety rules:
                 - Keep every visual element inside cardRoot.
-                - Avoid overlapping text, contact, profileImage, and portfolioArea.
-                - Keep portfolioArea in whichever open zone works best, such as lower-right, lower-middle, right column, or bottom band, with about 360px x 178px of usable space for up to 8 compact items without clipping.
-                - Treat portfolioArea as a full occupied 360px x 178px panel even if the Current HTML shows it as empty. The server injects the title and item buttons after your answer.
-                - The future injected portfolioArea panel must have at least 24px clear gap from introText, contact details, profileImage, name/job group, and any decorative panels.
-                - If portfolioArea intersects introText or contact details in the current layout, move portfolioArea, introText, or contact details to a different zone. Do not leave them on the same x/y area.
+                - STRONGLY PREFER using CSS Flexbox (display: flex) or CSS Grid to group elements naturally without overlapping. Avoid overusing position: absolute for every single element.
+                - NEVER use fixed height (e.g., height: 160px) for text containers like introText, nameText, jobText, companyText, departmentText, emailText, phoneText, or contact boxes. Always use height: auto or min-height so the box can expand vertically if the text is long.
+                - Use a clean grid-like composition with clear zones. Align left edges, top edges, or center lines where possible.
+                - Section boxes must never overlap, touch, or visually crowd each other. If using position: absolute, calculate coordinates carefully to allow elements above them to expand without colliding.
+                - Keep at least 24px of visible gap between introText box, contact box, profileImage, name/job group, portfolioArea, and decorative panels.
+                - Keep every section at least 28px away from the cardRoot outer edge. Never set top, left, right, or bottom close enough that text touches or clips at the edge.
+                - Do not place emailText or phoneText at the extreme top-left, top-right, bottom-left, or bottom-right corner unless the current layout already has a full contact box there with enough padding.
+                - Prefer grouping emailText and phoneText together in one contact zone. If separated, they must still align cleanly and have matching widths, padding, and style.
+                - If you create a contact group wrapper, phoneText and emailText must be actual children inside that wrapper. Otherwise, give phoneText and emailText their own absolute/flex-grid positioning.
+                - Contact boxes should be at least 210px wide for email and at least 170px wide for phone, unless the text is shorter and still fully visible.
+                - If portfolioArea would collide with introText or contact details, move or resize the sections instead of stacking them.
+                - Treat portfolioArea as a real occupied panel even if your HTML leaves it empty. The server will inject content later, so reserve EXACTLY the 360px x 178px rectangle. Do not make it arbitrarily larger (e.g., 800px wide) than the reserved size.
+                - No other section may be behind, under, inside, or touching the future portfolioArea rectangle. Force portfolioArea to sit clear of long text blocks.
+                - If the current layout puts too many regions in one column, reorganize into a clean two-column or top/bottom layout while preserving the current visual mood.
+                - Do not preserve rough or cluttered visible boxes if they cause overlap. Convert them into polished aligned sections with consistent padding, radius, and spacing.
+                - Keep introText in a bounded readable block. If the intro is long, allow the block to expand downward (height: auto), reduce font size, or wrap text naturally.
+                - Contact details must remain readable, fully inside their box, and must not sit under portfolioArea.
+                - Text inside any bounded region must use display: flex or equivalent centering when appropriate, with consistent padding and line-height. No text should sit awkwardly at a bottom-left corner.
+                - Do a final mental bounding-box check before answering: every visible text line must be fully inside cardRoot, every panel must fit in 860x480, and no section may cover another section.
+                - Avoid large empty decorative boxes when content is crowded.
+                - MANDATORY CSS: Use box-sizing: border-box, word-break: keep-all, and overflow-wrap: break-word (or overflow-wrap: anywhere) on all text containers to prevent text from breaking out of boxes.
+                - Use safe margins of about 36px to 56px and consistent gaps between sections.
+
+                Portfolio/extra area rules:
                 - portfolioArea must remain a single empty placeholder container. Do not include the Portfolio / Skills / Links title, chips, URLs, skill names, certificate names, or portfolio titles in the generated HTML.
                 - Do not use CSS ::before or ::after on portfolioArea or linkArea to render titles, item names, URLs, or labels.
                 - Do not create duplicate portfolio, skills, links, certificate, tag, chip, or badge panels outside portfolioArea.
                 - Keep the current colors and mood, but change coordinates, widths, heights, font sizes, and spacing as much as needed to remove overlap.
-                - Use flexible wrapping, smaller font sizes, or adjusted spacing when text is long.
-                - Keep introText, contact details, and portfolioArea in separate non-overlapping zones.
-                - Section boxes must not overlap or touch. Keep at least 18px of visible gap between introText box, contact box, profileImage, name/job group, portfolioArea, and decorative panels.
                 - If introText and portfolioArea collide, shrink or move introText first, or move contact details, while preserving the card's colors and style.
                 - If the original template coordinates are the cause of overlap, ignore those coordinates and reflow the card into cleaner zones while preserving the same palette and visual mood.
                 - Recommended repair layouts:
                   1. Left identity/profile column, right intro/contact column, portfolioArea as a lower-right block with no overlap.
                   2. Top identity/contact row, middle intro block, bottom portfolioArea band.
                   3. Left intro/contact column, right identity/profile column, portfolioArea below the right column.
-                - Avoid putting large introText and portfolioArea on the same horizontal row unless their rectangles have at least 24px gap.
-                - Put long introText in a smaller bounded block with max-width and line-height, not behind portfolioArea.
-                - Use CSS box-sizing: border-box, overflow-wrap: anywhere, and reasonable line-height on text boxes.
-                - Final self-check before returning: imagine rectangles around profileImage, name/job group, introText, emailText, phoneText, contact group, and portfolioArea. None of those rectangles may intersect or touch.
-                - Avoid large decorative boxes if they cause crowding.
                 - Do not remove editable classes from major editable text elements.
                 """.formatted(
                 safe(card.getDisplayName()),
@@ -604,6 +685,78 @@ public class OpenAiCardService {
             return "- none";
         }
         return drawingLayoutJson;
+    }
+
+    private String buildDrawingLayoutGuide(String drawingLayoutJson) {
+        if (drawingLayoutJson == null || drawingLayoutJson.isBlank()) {
+            return "- No drawn elements. Use the text description and create a balanced default layout.";
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(drawingLayoutJson);
+            JsonNode elements = root.path("elements");
+            if (!elements.isArray() || elements.isEmpty()) {
+                return "- No drawn elements. Use the text description and create a balanced default layout.";
+            }
+
+            StringBuilder guide = new StringBuilder();
+            for (JsonNode element : elements) {
+                String role = text(element, "role");
+                if (role.isBlank()) {
+                    role = "unassigned";
+                }
+                String label = text(element, "text");
+                int x = element.path("x").asInt(0);
+                int y = element.path("y").asInt(0);
+                int width = element.path("width").asInt(0);
+                int height = element.path("height").asInt(0);
+                int centerX = x + width / 2;
+                int centerY = y + height / 2;
+
+                guide.append("- role=")
+                        .append(role)
+                        .append(", label=")
+                        .append(label.isBlank() ? "-" : label)
+                        .append(", box={x:")
+                        .append(x)
+                        .append(", y:")
+                        .append(y)
+                        .append(", width:")
+                        .append(width)
+                        .append(", height:")
+                        .append(height)
+                        .append("}, zone=")
+                        .append(horizontalZone(centerX))
+                        .append("-")
+                        .append(verticalZone(centerY))
+                        .append(". Keep #")
+                        .append(role)
+                        .append(" in this same rough zone after cleanup.\n");
+            }
+            return guide.toString();
+        } catch (Exception ex) {
+            return "- Drawing layout JSON could not be parsed. Use it only as raw reference and prioritize a clean, non-overlapping layout.";
+        }
+    }
+
+    private String horizontalZone(int centerX) {
+        if (centerX < 286) {
+            return "left";
+        }
+        if (centerX > 574) {
+            return "right";
+        }
+        return "center";
+    }
+
+    private String verticalZone(int centerY) {
+        if (centerY < 160) {
+            return "top";
+        }
+        if (centerY > 320) {
+            return "bottom";
+        }
+        return "middle";
     }
 
     private String buildExtraInfo(List<CardExtraItemRequest> extraItems) {
@@ -633,6 +786,8 @@ public class OpenAiCardService {
     }
 
     private AiCardResponse fallback(BusinessCard card, String prompt, String reason) {
+        userLog.warn("[USER-ACTION]|AI 생성 실패로 기본 템플릿 사용. cardId={}, reason={}", card.getCardId(), reason);
+
         String html = """
                 <div id="cardRoot" class="card-root">
                   <div id="profileImage" class="card-profile" aria-label="profile image"></div>

@@ -1,311 +1,761 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Interactive Digital Business Card</title>
-    <link rel="stylesheet" th:href="@{/css/wallet.css}">
+    <title>AICARD Demo</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
     <style>
         :root {
-            --primary-color: #4ca1af;
-            --dark-color: #2c3e50;
-            --bg-color: #f0f2f5;
-            --card-bg: #ffffff;
+            --page-bg: #FFFBEB;
+            --text-main: #3D2B1F;
+            --text-sub: #7A6353;
+            --brand: #8B5A2B;
+            --brand-dark: #5D3A1A;
+            --line: #E5D5C5;
+            --panel: rgba(255, 255, 255, 0.72);
         }
 
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
-            font-family: 'Pretendard', sans-serif;
         }
 
         body {
-            background-color: var(--bg-color);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            margin: 0;
             min-height: 100vh;
+            color: var(--text-main);
+            background: var(--page-bg);
+            font-family: Pretendard, Arial, sans-serif;
         }
 
-        /* 메인 컨테이너 */
-        .app-container {
-            width: 100%;
-            max-width: 380px;
-            height: 600px;
-            background: var(--card-bg);
-            border-radius: 30px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* 화면 공통 스타일 */
-        .page {
-            display: none; /* 기본적으로 숨김 */
-            padding: 30px 20px;
-            height: 100%;
-            animation: fadeIn 0.4s ease-out;
-        }
-
-        .page.active {
-            display: block; /* 활성화된 페이지만 표시 */
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* [페이지 1: 홈/프로필] */
-        .profile-section {
-            text-align: center;
-            margin-top: 40px;
-        }
-
-        .profile-img {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            border: 5px solid var(--primary-color);
-            margin-bottom: 20px;
-            object-fit: cover;
-        }
-
-        .name {
-            font-size: 26px;
-            color: var(--dark-color);
-            margin-bottom: 10px;
-        }
-
-        .job-title {
-            color: var(--primary-color);
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 30px;
-        }
-
-        .origin-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 15px;
-            font-size: 14px;
-            line-height: 1.8;
-            color: #666;
-        }
-
-        /* [페이지 2: 경력] */
-        .section-header {
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 25px;
-            color: var(--dark-color);
-        }
-
-        .timeline {
-            border-left: 2px solid #eee;
-            padding-left: 20px;
-            margin-left: 10px;
-        }
-
-        .timeline-item {
-            margin-bottom: 30px;
-            position: relative;
-        }
-
-        .timeline-item::before {
-            content: '';
-            position: absolute;
-            left: -26px;
-            top: 5px;
-            width: 10px;
-            height: 10px;
-            background: var(--primary-color);
-            border-radius: 50%;
-        }
-
-        .time-date {
-            font-size: 12px;
-            color: #999;
-            margin-bottom: 5px;
-        }
-
-        .time-title {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--dark-color);
-        }
-
-        .time-desc {
-            font-size: 13px;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        /* [페이지 3: 연락처] */
-        .contact-list {
-            margin-top: 20px;
-        }
-
-        .btn-contact {
-            display: flex;
-            align-items: center;
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 12px;
-            margin-bottom: 15px;
+        a {
+            color: inherit;
             text-decoration: none;
-            color: var(--dark-color);
-            transition: 0.2s;
         }
 
-        .btn-contact:hover {
-            background: #eef2f3;
-            border-left: 4px solid var(--primary-color);
+        button {
+            font-family: inherit;
         }
 
-        .btn-icon {
-            font-size: 20px;
-            margin-right: 15px;
-        }
-
-        /* 하단 내비게이션 바 */
-        .nav-bar {
-            height: 70px;
-            background: #ffffff;
-            border-top: 1px solid #eee;
+        .demo-nav {
             display: flex;
-            justify-content: space-around;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 22px 24px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 0;
+        }
+
+        .logo span {
+            color: var(--brand);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-link,
+        .primary-link {
+            min-height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            padding: 0 14px;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .nav-link {
+            border: 1px solid var(--line);
+            color: var(--text-sub);
+            background: var(--panel);
+        }
+
+        .primary-link {
+            color: #FFFBEB;
+            background: var(--brand);
+        }
+
+        .primary-link:hover {
+            background: var(--brand-dark);
+        }
+
+        .demo-shell {
+            width: min(1180px, 100%);
+            margin: 0 auto;
+            padding: 18px 24px 56px;
+        }
+
+        .demo-head {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+            gap: 28px;
+            align-items: end;
+            margin-bottom: 24px;
+        }
+
+        .demo-head h1 {
+            margin: 0;
+            color: var(--text-main);
+            font-size: clamp(30px, 4vw, 48px);
+            line-height: 1.12;
+            letter-spacing: 0;
+        }
+
+        .demo-head p {
+            margin: 0;
+            color: var(--text-sub);
+            font-size: 16px;
+            line-height: 1.7;
+            word-break: keep-all;
+        }
+
+        .template-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 18px;
+            align-items: start;
+        }
+
+        .template-item {
+            display: grid;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .template-preview {
+            container-type: inline-size;
+            position: relative;
+            width: 100%;
+            aspect-ratio: 860 / 480;
+            overflow: hidden;
+            border-radius: 18px;
+            box-shadow: 0 20px 50px rgba(61, 43, 31, 0.18);
+        }
+
+        .template-info {
+            display: grid;
+            gap: 8px;
+            min-height: 162px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 16px;
+            background: var(--panel);
+        }
+
+        .template-info strong {
+            color: var(--text-main);
+            font-size: 18px;
+        }
+
+        .template-info p {
+            margin: 0;
+            color: var(--text-sub);
+            font-size: 14px;
+            line-height: 1.65;
+            word-break: keep-all;
+        }
+
+        .template-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
             align-items: center;
         }
 
-        .nav-item {
-            cursor: pointer;
-            text-align: center;
-            color: #ccc;
-            transition: 0.3s;
+        .template-tags span {
+            min-height: 24px;
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 0 9px;
+            color: #FFFBEB;
+            background: var(--brand);
             font-size: 12px;
-            font-weight: 600;
+            font-weight: 800;
         }
 
-        .nav-item.active {
-            color: var(--primary-color);
+        .demo-card {
+            position: absolute;
+            inset: 0;
         }
 
-        .nav-item i {
+        .demo-card p,
+        .demo-card h2 {
+            margin: 0;
+        }
+
+        .demo-card .name {
+            letter-spacing: 0;
+            line-height: 1;
+        }
+
+        .demo-card .chip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: clamp(4px, 1cqw, 8px);
+        }
+
+        .demo-card .chip {
+            min-height: clamp(16px, 4.4cqw, 28px);
+            display: inline-flex;
+            align-items: center;
+            border: 0;
+            border-radius: 999px;
+            padding: 0 clamp(5px, 1.6cqw, 10px);
+            font-size: clamp(7px, 2.4cqw, 12px);
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .demo-card .chip:hover {
+            transform: translateY(-1px);
+        }
+
+        .modern-dark {
+            color: #f8fafc;
+            background:
+                    radial-gradient(circle at 20% 18%, rgba(103, 232, 249, 0.16), transparent 30%),
+                    linear-gradient(135deg, #101827 0%, #172033 50%, #0f766e 100%);
+        }
+
+        .modern-dark::before {
+            content: "";
+            position: absolute;
+            inset: 5%;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+        }
+
+        .modern-dark .kicker {
+            position: absolute;
+            left: 6.5%;
+            top: 10%;
+            color: #a7f3d0;
+            font-size: clamp(8px, 2.6cqw, 15px);
+            font-weight: 900;
+        }
+
+        .modern-dark .name {
+            position: absolute;
+            left: 6.2%;
+            top: 26%;
+            color: #ffffff;
+            font-size: clamp(24px, 10.4cqw, 58px);
+            font-weight: 900;
+        }
+
+        .modern-dark .job {
+            position: absolute;
+            left: 6.6%;
+            top: 41%;
+            color: #67e8f9;
+            font-size: clamp(12px, 4.1cqw, 24px);
+            font-weight: 900;
+        }
+
+        .modern-dark .company {
+            position: absolute;
+            left: 6.7%;
+            top: 50%;
+            color: #cbd5e1;
+            font-size: clamp(9px, 2.8cqw, 16px);
+            font-weight: 800;
+        }
+
+        .modern-dark .intro {
+            position: absolute;
+            left: 6.3%;
+            bottom: 13%;
+            width: 42%;
+            color: #e2e8f0;
+            font-size: clamp(9px, 2.6cqw, 16px);
+            line-height: 1.6;
+            word-break: keep-all;
+        }
+
+        .modern-dark .avatar {
+            position: absolute;
+            right: 7%;
+            top: 11%;
+            width: 15.6%;
+            aspect-ratio: 1;
+            display: grid;
+            place-items: center;
+            border-radius: 26%;
+            color: #0f172a;
+            background: linear-gradient(135deg, #ffffff, #a7f3d0);
+            font-size: clamp(16px, 6cqw, 34px);
+            font-weight: 900;
+        }
+
+        .modern-dark .contact {
+            position: absolute;
+            right: 7%;
+            top: 38%;
+            width: 35%;
+            display: grid;
+            gap: clamp(4px, 1.3cqw, 9px);
+        }
+
+        .modern-dark .contact span {
+            min-height: clamp(20px, 6cqw, 38px);
+            display: flex;
+            align-items: center;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 10px;
+            padding: 0 clamp(6px, 2cqw, 14px);
+            background: rgba(2, 6, 23, 0.32);
+            font-size: clamp(8px, 2.35cqw, 14px);
+            font-weight: 800;
+            overflow-wrap: anywhere;
+        }
+
+        .modern-dark .portfolio {
+            position: absolute;
+            right: 7%;
+            bottom: 8%;
+            width: 42%;
+            height: 25.5%;
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            border-radius: 14px;
+            padding: clamp(8px, 2.4cqw, 16px);
+            background: rgba(15, 23, 42, 0.74);
+        }
+
+        .modern-dark .portfolio-title {
+            color: #f8fafc;
+            font-size: clamp(8px, 2.3cqw, 13px);
+            font-weight: 900;
+            margin-bottom: clamp(6px, 1.5cqw, 10px);
+        }
+
+        .modern-dark .chip {
+            color: #ecfeff;
+            background: rgba(103, 232, 249, 0.16);
+            border: 1px solid rgba(103, 232, 249, 0.28);
+        }
+
+        .simple-white {
+            color: #222222;
+            background:
+                    linear-gradient(90deg, rgba(139, 90, 43, 0.08) 1px, transparent 1px),
+                    linear-gradient(180deg, rgba(139, 90, 43, 0.08) 1px, transparent 1px),
+                    #fbfaf7;
+            background-size: 8% 14%;
+        }
+
+        .simple-white::before {
+            content: "";
+            position: absolute;
+            inset: 7%;
+            border: 1px solid rgba(61, 43, 31, 0.16);
+            border-radius: 8px;
+        }
+
+        .simple-white .name {
+            position: absolute;
+            left: 9%;
+            top: 16%;
+            color: #2f241d;
+            font-size: clamp(24px, 10cqw, 56px);
+            font-weight: 900;
+        }
+
+        .simple-white .job {
+            position: absolute;
+            left: 9.3%;
+            top: 32%;
+            color: #8B5A2B;
+            font-size: clamp(11px, 3.4cqw, 20px);
+            font-weight: 900;
+        }
+
+        .simple-white .intro {
+            position: absolute;
+            left: 9%;
+            top: 49%;
+            width: 40%;
+            color: #6f5a4b;
+            font-size: clamp(9px, 2.5cqw, 15px);
+            line-height: 1.65;
+            word-break: keep-all;
+        }
+
+        .simple-white .info-line {
+            position: absolute;
+            right: 8.5%;
+            width: 34%;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px solid rgba(139, 90, 43, 0.24);
+            padding-bottom: clamp(5px, 1.5cqw, 9px);
+            font-size: clamp(8px, 2.3cqw, 14px);
+        }
+
+        .simple-white .info-line strong {
+            color: #3D2B1F;
+        }
+
+        .simple-white .info-line span {
+            color: #7A6353;
+            text-align: right;
+            overflow-wrap: anywhere;
+        }
+
+        .simple-white .line-one {
+            top: 20%;
+        }
+
+        .simple-white .line-two {
+            top: 34%;
+        }
+
+        .simple-white .line-three {
+            top: 48%;
+        }
+
+        .simple-white .line-four {
+            top: 62%;
+        }
+
+        .simple-white .chip-list {
+            position: absolute;
+            left: 9%;
+            bottom: 13%;
+            width: 45%;
+        }
+
+        .simple-white .chip {
+            color: #3D2B1F;
+            background: #f1e6da;
+        }
+
+        .portfolio-grid {
+            color: #101827;
+            background:
+                    linear-gradient(135deg, #f7d154 0%, #fffbeb 48%, #9ee493 100%);
+        }
+
+        .portfolio-grid .block {
+            position: absolute;
+            border: 1px solid rgba(16, 24, 39, 0.12);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.54);
+            box-shadow: 0 14px 34px rgba(61, 43, 31, 0.12);
+        }
+
+        .portfolio-grid .name-block {
+            left: 6%;
+            top: 9%;
+            width: 33%;
+            height: 36%;
+            display: grid;
+            align-content: center;
+            padding: clamp(12px, 3cqw, 24px);
+            background: rgba(16, 24, 39, 0.9);
+            color: #ffffff;
+        }
+
+        .portfolio-grid .name {
+            font-size: clamp(23px, 9.5cqw, 54px);
+            font-weight: 900;
+        }
+
+        .portfolio-grid .job {
+            margin-top: clamp(6px, 1.7cqw, 12px);
+            color: #f7d154;
+            font-size: clamp(10px, 3.2cqw, 19px);
+            font-weight: 900;
+        }
+
+        .portfolio-grid .project-block {
+            right: 6%;
+            top: 9%;
+            width: 48%;
+            height: 36%;
+            padding: clamp(12px, 3cqw, 24px);
+        }
+
+        .portfolio-grid .project-block strong,
+        .portfolio-grid .skills-block strong,
+        .portfolio-grid .contact-block strong {
             display: block;
-            font-size: 20px;
-            margin-bottom: 4px;
+            margin-bottom: clamp(7px, 1.8cqw, 13px);
+            color: #21311f;
+            font-size: clamp(9px, 2.7cqw, 16px);
+            font-weight: 900;
+        }
+
+        .portfolio-grid .project-block p {
+            color: #355033;
+            font-size: clamp(9px, 2.5cqw, 15px);
+            line-height: 1.55;
+            word-break: keep-all;
+        }
+
+        .portfolio-grid .skills-block {
+            left: 6%;
+            bottom: 9%;
+            width: 48%;
+            height: 34%;
+            padding: clamp(12px, 3cqw, 24px);
+        }
+
+        .portfolio-grid .contact-block {
+            right: 6%;
+            bottom: 9%;
+            width: 33%;
+            height: 34%;
+            padding: clamp(12px, 3cqw, 24px);
+        }
+
+        .portfolio-grid .contact-block span {
+            display: block;
+            color: #355033;
+            font-size: clamp(8px, 2.3cqw, 14px);
+            font-weight: 800;
+            line-height: 1.8;
+            overflow-wrap: anywhere;
+        }
+
+        .portfolio-grid .chip {
+            color: #101827;
+            background: rgba(247, 209, 84, 0.86);
+        }
+
+        .demo-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 28px;
+            z-index: 10;
+            max-width: min(420px, calc(100vw - 32px));
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #FFFBEB;
+            background: rgba(61, 43, 31, 0.94);
+            box-shadow: 0 16px 40px rgba(61, 43, 31, 0.24);
+            font-size: 14px;
+            font-weight: 800;
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, 12px);
+            transition: opacity 0.18s ease, transform 0.18s ease;
+        }
+
+        .demo-toast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+
+        @media (max-width: 1040px) {
+            .template-grid {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+
+            .template-item {
+                grid-template-columns: minmax(0, 1fr) minmax(260px, 320px);
+                align-items: stretch;
+            }
+
+            .template-info {
+                min-height: 0;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .demo-nav,
+            .demo-head {
+                align-items: flex-start;
+                grid-template-columns: 1fr;
+            }
+
+            .demo-nav {
+                flex-direction: column;
+            }
+
+            .nav-actions {
+                width: 100%;
+            }
+
+            .nav-link,
+            .primary-link {
+                flex: 1;
+            }
+
+            .demo-shell {
+                padding-inline: 12px;
+            }
+
+            .template-item {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
-
-<div class="app-container">
-
-    <div id="home" class="page active">
-        <div class="profile-section">
-            <img src="data:image/webp;base64,UklGRlgRAABXRUJQVlA4IEwRAADwZQCdASoYARcBPp1In0slpConpdJ7OUATiWVuul4AyWrM8oliJpeq83/zf+byU7OPs74BGTfazgC60LVf8Ta+pQD8ozwZNjnGPPuvITj6o9j3RY/mfoFL4e7V8DN/LdVLZeYd7dWtIkPnffgE2KRgfnSOR7JG8ePRKb39xcqhe4aRx0HV+3FU9UoFcLi9/F8R5jduCnG1YTJWpNvWAhqY+W9/H5S5lnGE8wTdwi06z0/jj95Hkhf5CPN7bT746oqEfpRzisj3+2icd6Nm33EMC4TQBX8K6XEsMQ4o3V/cH10aWcY5ABBHUtC3kAG+sQ5layYvAdm9AR81kLjOVUT6hHOIlXkVOFziWNJxueweWG8l3VdNntHdG0rIe3X1uLdr3GphMSu9NTXCYdowkKQRETQ6AKZdoodxF5vt0ziw6KSmJ65toMh2Z530QFqzHlwVW+GthzmdIj0sD3sRK0xXPDLP9x8zqdmG7lH1Rl+Ps042p3l9QfvZDE21TmBjlhuP7I00sZVkuYACFebriahTZGz+OfiDqIoGnQn9AtE0nerfdjBpnRgzTc3jqbmDxYMUhGJAlidFER0iURDDBD04GjBiPphgt8yBoNeK12KloYNVhYMLD+ZUEZJ6GEAdS6RuWzod9+TVZwg9D0fDcRc1C2FHxRJg1dJK0nT6vCnp3juWuDdjdgBB9Kh2plGNE00LpHLXtHH9qD/6j7SYeaxngll7/S15IYncyvXe++0zebUfPh82ZNmBiquwg08YNwAKJGKJdxt61dxDU8sajwoOWO6ANO461clF9l4sPDdpxag356qp4ZDppgD0sbiLergnBsdxPtPZQNAGTXHJkw5YhdcT8hn1bUE8SheFS39I66DiyGb4jchtchDZwNCAz1IYGCxjV7wMXj0Irevq60H/ILuHPY7BGeohRGhcG+hiAEAfHMk/Mu9royv2lWR7JmeVnsHHD8zsbWu61yZV01o5wTWp5/4y+HN06XPVB0Vt15F+vEeibNPcb/lZVTjNOvz53ii85CFu09h2K8g9jpyw9Ky3d8YH94U+bhsEhgOl6NfcTg7UcA4D7VCRoodcbNM6AjtYYI4yAAD+oiYlEv/X2+qnZt/BiZfpWe82ln5af/Ncrcf4Jf7NqYwIr/263+f+urkrF2OF+5ZMioKjsWDKTz4iXrvTAxSckJgkpWLuIzUKxpU3ZD/sxNZ3ue4JMP7jHSYoWlKYIBgujRJABy5+MxcrlwLGJgMLTATiSv9eJN/gMKUlXnUdt3nYkGbaAqMcUk2XRyAgImsY3nHrAimeSvnSaxktQUkHSgtVTvrFoPj3K/mpnrsaSD2rpJmU7Vqc1YXOsy7A1ivJx97Fkkav49jHqnc9VuFiW6sCsJIHjiETqcLZu2uEUQ7jhkuzSRXhSciiVNVm4aNkbYHjt2yiPVK/a1rEOVcKw7XH7DabodRJv88Vv+aeGwELKz5JrZBiIquR6X4OI8QJwz5ac/a14KMD9frzoj2FiYtbH/KltO2vuQ9XT7GtWlWnp0VWfngYupNGjIS34+jGMb6HlzOrKdp2LNQM90bJjiKsBkNPWcomGHpmNmcluDTWwLc7S7QCiv9fLBOwpv7vC5Znu2I+3VBp0LAK2XClJhBQBkIk4F54MYJ1sE3/KpTbh4WYgCvr1rkrtooiO/P4HevA3FyXCI3pTDpsLXDyj5K5rSZa1rfQI36C3VS3F3FwjM8TvU+1N0Ha2Iwftsn4e0IwMzBHSvzIzBmTk+yw8sQOm/yg3OhGwYHuEllu0StvfnTH1pwmAQbrhXBs+zQAwL6RdtGE5wJlHRyGLwOVjS4K3a29eL47oRchjSxv/EV2Wdm6ps7udfJdfBF3QN2DBV7fQNFF8aSCuQFtLBt5Nu2nrke5250fAOFnxjmIVljH6/+g498QkOANWcbacSpZbeEgIL5bULfbPeasRXc2avClDZPmc+wsbTHh6oxOeFG0tKXXFlzEHHbbFNdnNQbNRleTXbqGXucXxfUEmuUqq1Xz6MD08T0q3qxoHoXgO3SZHohLqFCv1eZG/egFBuqEoqy0M3lTNklUNYu2jDNTqN+hspu989wvLi2ba8Rold2a+lJu0+7k9i9DVcIf7e1ulmNsXJpuGLRTRewFEPsmFOujba9Og1OKR0ui6HE+3C0AzXnNorlbZ3nLPlBUMJ0ghMSBbClBjSLZSt4p/GHQVXPuO1rb5ymsAr3tONkCK++oAZie9a2LlCqbrMeNCUTMtG6PpFQb67nN6mtIDGOgAm9DH4Ewns2WGswXwch7bsQiMQhOdsyBRQakiuAGCYL1Q1tx9ArQrWMhwWCY7i1m/DvQwlQtOK50jgkzZoCKtkAwoMSi9SCSylimbVIjuHDpn1MlRsdaemrUZbPrL0RbA5Gcve87Ac+XqULZkxwdFjxpuUhjPUj01qcaCGDJd4u3Os7JxinE43hvTZEiFCQ7a4KG0NKP2Ia/s6qbNfZfLRewjXXjyDv0vu/q/yBEjWkk7vorr92hywHVg9SLGLG4fd38zjvab2VSygEMVAy4zHcbBKbZgBQs4yuOBRZ5aKhtrTSB4h6Z4oa2e//SK4MxRu8puOSHI8Yl5AB7XVMTsNXUz4vWcIn6BQN5vgbRHY7yfq3nJNNQ6z0m5y7Om+RlgIzavKCk1oHHv11v6bsR5GpLjvRAmMhoMX5OIKG2CDZWLhZ9M+xgSUxLIkWHVx64rkZFqumUr1BbK1/mNgla0OQm/18CpRmumLbAK6aBk12XZJp5C32xORQjRh4CC2HVDqDzNlMMFZBqI3OPAzsV8wz3EMPecrkTptpP38ynbt+1IQ3LqCkj5lCjogvdWMJRpJKa4ePK+gm/FNSiWpy9Fv4FSrU6HFK3clqzwf4r30eanO2mx/bI48zy0rNzgYW6wVfqMUkcEmI/6zufV2EAvotREAub6IzbWOyB4hdUYUriSzGpwnXxcrBZM03u5Y96KAxDdeMXabhv6Tt0DUFOZW5exrv62eKAhgPkxlOD6SspEgWzqs/ddPa0ZdrGCDgyqoZqM0k4Lh5TNkXffrpON2sAeJ8tePwGYay/L/XPGPRHRqIdb5W5m125kWwVwzJfs0tM25wgXfjiCbHRkOHjzybWH0dNsG2NzVoAmHXGr8Q93XdVHMq+FQYmc8XRAGWxUQDgR8Zr44JIzuNd/FfG8SWbfrJ2DmBd9+WsVP1BcWx1NSgtxm6Vxy1dt98pGnY6qPu5cj4CdVZ1NMhAgQUetVtFuEfrXSUJ2LRb3B0T72mHWZbHDdGgKKWQiaCrRYXZxiDZHzw1nDYq/YUGkJiS4NvD/U4/O2uW7iPUdNS8W1RHtP8jlctXbDxD4/mdDMmtziYCcFrD59oXrJ0nz6SfoAACpNt5/DiD9I1qsnuUrk9+MF+x3SQAOi/M2wa9DYkAoMfJgOuU+Y4bUOixl3Tyf6Um67FZFZaG433uHKQDSMeGpt5w3WMsZcXYSUBHObKygPNC6j0DCdR9ZHkWl21BHLORGY7OAaFLjHA1rSAHvapvDaQzK9YLcCV+ccTWuYWiPeYA908PVtC7aA4bCPxE9I4SHNECqjSeA3EK8dKDSgQgn1kNMJ+BYQLnZLAo5r+wlTBusRmllEMkPIC2yz4I08nrysqYteozXOrfyqUwRrFGcFixkzLSzogAcyJuJ7FqQK98xg7+AOXOn4ut83bOWrU8+5RWK102BXjGRI9d0ZAcJeOAvciJW2RgJe8XJUvsDAIMKM7GhhCXH9psLTIC+UOF7e0NkQxlORm5SxW6QHeU94heeJxpoDlPsQbSdZj/1SwR6yQHZkfjY9tWSXkJvgBUi1OioJ6fqxprKvx1eUkxgWGhv77BaFPxmA19dL2XfylJsW1NlKmUHkZs/gqrogxxXtyKfbOzfsbZQ/97eF0dA2HD3koVym96rVRn1uK2wPEsS21OsbMooyLqtszbBmPtADjnCERi5gEIc0sZ87xwoTx2NMoJT3J8Agd7bmlGqicTpH0j3MhhVr4ecctOMUAGTb2FnrK8sWc7nGSYi+TC0sL0XGFAOcH6Aj0tV6YPteHr2hsVQA9ruxCR/JZz4l2E4eU7mCTSYaxmzdRLlWuqwqbYbPt7UnAnlDieGn5jCfz+EIXkkEhDNS/tFZr9rt6CW/EO8U81nWcEUZkJMxR9OW8yVpr70YqG7GUWUuz+HeWdQ5t3iF8NRUeNG1Ic223VHFfh9/1xs92A2rQ/QV7WUlAzLxccM2UCBRDlmjlLmU8qXbHo96g4Ab3adjDLKNOGq/jU1lCV7lhMeV4rjurA1Tlo8cxjdAvcjhFiAdR5m0RLOeIN59Uzff0d4Y1GC3x0YN9nvBVAQVOkXW3VjUNU7QJXh89nViCFA3nKLMiVbcHdgKMgqyshSkfSSo++7avfc9Lq/N8cUQ0sXU9rD55yKb1MJZDUiu86AM4GvcrTGMz7i3IQOUuMT5lqznqa4aDHLWLEuFom3kgY+HqK/XdIUpjpzq+h59/+HtQ3/7t3WoRB23MI1jXiCuqzpB+QZuRGseWpiYy0+nk9AS23mrd+QSJDwTVnDC9R/bbbgGMXvZQq108BeLAeG0QE0nLJLaBRpD/LTKWadO0AEsD2Cd5XRKPPeN3Y+QIrxhFKtGFfEhJtKQRPaHrBeK8cp6WvzAFWY676SlTOIUEcD0BCm3xoIslLRdMyNCJMjZY6TH73HwLkPLHTrQ5B/cngnNQ18Iih0FyqzjhMGH4PIbMM7LHbRHixdM90Pu81fWNsB7L/MUAjTH679UTd8nRn1ISp00dZZOgTYWExFJCJJOK/xEwqROwT/03EZvIE6BRX8CyptSTpwleNk/v7NBafYB7mxMrPLtQmZGurqLHPVPbJra/ZXXIVsW/5HuHUhcaP9j3w1h+LLB1Di3t7+X/T63E6r/nh5Ite6vU60KWSLRsHDMI703XGwwKWYImSi7HiK0HdoOMlxbD9GUpIqr3KONi/6TlNt7VmqbHTITwciVRb5gYw44i893HTIerAsdMscy3b3cJqgfq7omM7Eq6K1I7VW8dW4RqhiC/JJbLBZ2gWwYd3cMrM2JuBnuY1VA2jDcHHPoTXlLsCIRXlSY742g2hZQDpP5cfDXTG9nTAXHcPzb4DapnJpAKRbaDqIZsiPjbc3d3DEVW/buKN67ydmNbIqrsWmoM1MkG43chPKDZV2sBPfx2R2xPUQ50llCKvwiGDlLw7X/Zdhm5tYiuqCNdeAEvX/OOvRRQq9hemq4FJ/MEb4JN692XbN+gNsf0RwVSxWEsQD2gEoAoyTmySoiZksoNEM58/m8LJDldBk/Hc6BkVSzlkmeA86LpqeO/4PIKwVc3EqNzSeXZA1n8heLWux9MbH6gW/jJujDQsD2HQLbUnh7jRDywqqE+p2Qob2TouAral6sFTnzpdpp4MuKf35+OL9Z/AXudbPwo5lzIiIXu1wU8eA6LhU+31+XJW/YCjd/BAmK2Uv87kLlqHVf5kv6cI7iJ9Em0JuRieriH2tuT1/1kgIa81O64EtsDEPYTNQczitnWhlQIL/AaN02IbT6ym3xU937SlV3S9KHiifcvCyAfbaK9l709jGfqw+rWFF4+uDBGTpgY7iuZAU0exXrni7AW3BEnYJOyvzdaL1Sp9DJSHoHCaYKvjHkiZRxM0BBdtMKtpavkrNRCL9Sud/02tGazUbsPcjRWSzGM6DniTzqIxxIKISnW0V6d8CNvyLn/nGDNWf5mg/G5W75HSLwdIk1t+O2SiplGt1gH118jzi++khMuBVoVyH0rJvteakPzrIb3bxRNHwAGu1b6e2lwsQVO8M4nwFsTbBb19DExgXJrYAB5Gr5UPZ6JU2dclutOxfd1tBGQ0liEE2n7AiA8gzi6VsGtgpn+k8kpOoHO24AA="
-                 alt="Profile" class="profile-img">
-            <h1 class="name">홍 길 동</h1>
-            <p class="job-title">AI Tech Lead / Developer</p>
-            <div class="origin-info">
-                📍 서울특별시 거주<br>
-                🎓 한국대학교 컴퓨터공학 전공<br>
-                ✨ "AI로 일상을 연결합니다"
-            </div>
-        </div>
-    </div>
-
-    <div id="career" class="page">
-        <h2 class="section-header">Career</h2>
-        <div class="timeline">
-            <div class="timeline-item">
-                <div class="time-date">2023 - Present</div>
-                <div class="time-title">에이아이컴퍼니</div>
-                <div class="time-desc">디지털 명함 솔루션 리드 개발</div>
-            </div>
-            <div class="timeline-item">
-                <div class="time-date">2020 - 2023</div>
-                <div class="time-title">미래기술연구소</div>
-                <div class="time-desc">모바일 앱 UI/UX 설계 및 배포</div>
-            </div>
-        </div>
-    </div>
-
-    <div id="contact" class="page">
-        <h2 class="section-header">Contact</h2>
-        <div class="contact-list">
-            <a href="tel:01012345678" class="btn-contact">
-                <span class="btn-icon">📞</span>
-                <div><strong>Phone</strong><br>010-1234-5678</div>
-            </a>
-            <a href="mailto:test@test.com" class="btn-contact">
-                <span class="btn-icon">✉️</span>
-                <div><strong>Email</strong><br>test@test.com</div>
-            </a>
-            <a href="#" class="btn-contact">
-                <span class="btn-icon">🔗</span>
-                <div><strong>GitHub</strong><br>github.com/myaccount</div>
-            </a>
-        </div>
-    </div>
-
-    <nav class="nav-bar">
-        <div class="nav-item active" onclick="showPage('home')">
-            <span>🏠</span><br>Home
-        </div>
-        <div class="nav-item" onclick="showPage('career')">
-            <span>💼</span><br>Career
-        </div>
-        <div class="nav-item" onclick="showPage('contact')">
-            <span>📱</span><br>Contact
-        </div>
+<header class="demo-nav">
+    <a class="logo" th:href="@{/main}">AICARD<span>.</span></a>
+    <nav class="nav-actions">
+        <a class="nav-link" th:href="@{/main}">메인으로</a>
+        <a class="primary-link" th:href="@{/cards/select-type}">시작하기</a>
     </nav>
-</div>
+</header>
 
+<main class="demo-shell">
+    <section class="demo-head" aria-label="템플릿 미리보기 소개">
+        <h1>템플릿 3종 미리보기</h1>
+        <p>
+            현재 텍스트 기반 명함 생성에서 선택되는 기본 템플릿 3개를 예시 개인정보로 구성한 화면입니다.
+            실제 생성 시에는 입력한 직무, 분위기, 색상, 포트폴리오 정보에 맞춰 하나가 선택됩니다.
+        </p>
+    </section>
+
+    <section class="template-grid" aria-label="AICARD 기본 템플릿 3종">
+        <article class="template-item">
+            <div class="template-preview" aria-label="modern_dark 템플릿 미리보기">
+                <div class="demo-card modern-dark">
+                    <p class="kicker">AI Digital Business Card</p>
+                    <h2 class="name">김도윤</h2>
+                    <p class="job">AI 서비스 개발자</p>
+                    <p class="company">AICARD Lab</p>
+                    <p class="intro">AI 기반 디지털 명함을 설계하고, 사용자의 정보를 깔끔한 웹 명함으로 연결합니다.</p>
+                    <div class="avatar">KD</div>
+                    <div class="contact">
+                        <span>doyun.kim@aicard.test</span>
+                        <span>010-1234-5678</span>
+                    </div>
+                    <div class="portfolio">
+                        <p class="portfolio-title">Portfolio / Skills / Links</p>
+                        <div class="chip-list">
+                            <button type="button" class="chip" data-demo-message="Java 기술 태그 예시입니다.">Java</button>
+                            <button type="button" class="chip" data-demo-message="Spring Boot 기술 태그 예시입니다.">Spring Boot</button>
+                            <button type="button" class="chip" data-demo-message="QR 공유 기능 예시입니다.">QR 공유</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="template-info">
+                <strong>modern_dark</strong>
+                <p>다크 배경, 네온 계열 포인트, 기술직/개발자/전문직 느낌에 잘 맞는 템플릿입니다.</p>
+                <div class="template-tags">
+                    <span>tech</span>
+                    <span>dark</span>
+                    <span>developer</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="template-item">
+            <div class="template-preview" aria-label="simple_white 템플릿 미리보기">
+                <div class="demo-card simple-white">
+                    <h2 class="name">이지민</h2>
+                    <p class="job">UX 리서처</p>
+                    <p class="intro">정돈된 정보 구조와 읽기 쉬운 문장으로 사용자의 소개를 차분하게 보여줍니다.</p>
+                    <div class="info-line line-one">
+                        <strong>회사</strong>
+                        <span>AICARD Studio</span>
+                    </div>
+                    <div class="info-line line-two">
+                        <strong>이메일</strong>
+                        <span>jimin.lee@aicard.test</span>
+                    </div>
+                    <div class="info-line line-three">
+                        <strong>연락처</strong>
+                        <span>010-9876-5432</span>
+                    </div>
+                    <div class="info-line line-four">
+                        <strong>공유</strong>
+                        <span>URL / QR 코드</span>
+                    </div>
+                    <div class="chip-list">
+                        <button type="button" class="chip" data-demo-message="미니멀 템플릿의 관심 분야 태그입니다.">Research</button>
+                        <button type="button" class="chip" data-demo-message="화이트 템플릿의 포트폴리오 링크 예시입니다.">Portfolio</button>
+                    </div>
+                </div>
+            </div>
+            <div class="template-info">
+                <strong>simple_white</strong>
+                <p>흰색 중심의 미니멀 구성입니다. 학생, 연구, 사무직, 단정한 자기소개에 어울립니다.</p>
+                <div class="template-tags">
+                    <span>clean</span>
+                    <span>minimal</span>
+                    <span>formal</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="template-item">
+            <div class="template-preview" aria-label="portfolio_grid 템플릿 미리보기">
+                <div class="demo-card portfolio-grid">
+                    <div class="block name-block">
+                        <h2 class="name">박서연</h2>
+                        <p class="job">브랜드 디자이너</p>
+                    </div>
+                    <div class="block project-block">
+                        <strong>Featured Project</strong>
+                        <p>브랜딩, 화면 설계, 포트폴리오 링크처럼 보여줄 항목이 많은 사용자에게 맞춘 그리드형 명함입니다.</p>
+                    </div>
+                    <div class="block skills-block">
+                        <strong>Skills</strong>
+                        <div class="chip-list">
+                            <button type="button" class="chip" data-demo-message="디자인 스킬 태그 예시입니다.">Branding</button>
+                            <button type="button" class="chip" data-demo-message="프로젝트 태그 예시입니다.">UI Design</button>
+                            <button type="button" class="chip" data-demo-message="포트폴리오 링크 예시입니다.">Works</button>
+                        </div>
+                    </div>
+                    <div class="block contact-block">
+                        <strong>Contact</strong>
+                        <span>seoyeon.park@aicard.test</span>
+                        <span>010-5555-1234</span>
+                        <span>aicard.dev/seoyeon</span>
+                    </div>
+                </div>
+            </div>
+            <div class="template-info">
+                <strong>portfolio_grid</strong>
+                <p>포트폴리오, 프로젝트, 스킬이 많은 사용자를 위한 시각적인 그리드 템플릿입니다.</p>
+                <div class="template-tags">
+                    <span>portfolio</span>
+                    <span>creative</span>
+                    <span>grid</span>
+                </div>
+            </div>
+        </article>
+    </section>
+</main>
+
+<div class="demo-toast" id="demoToast" role="status" aria-live="polite"></div>
 <script>
-    function showPage(pageId) {
-        // 1. 모든 페이지 숨기기
-        const pages = document.querySelectorAll('.page');
-        pages.forEach(page => page.classList.remove('active'));
+    const demoToast = document.getElementById("demoToast");
+    let demoToastTimer;
 
-        // 2. 모든 탭 아이콘 비활성화
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(item => item.classList.remove('active'));
+    document.querySelectorAll("[data-demo-message]").forEach((button) => {
+        button.addEventListener("click", () => {
+            if (!demoToast) {
+                return;
+            }
 
-        // 3. 선택한 페이지만 보이기
-        document.getElementById(pageId).classList.add('active');
-
-        // 4. 클릭한 탭 아이콘 활성화
-        // 클릭 이벤트가 발생한 요소를 찾아 active 클래스 추가
-        event.currentTarget.classList.add('active');
-    }
+            window.clearTimeout(demoToastTimer);
+            demoToast.textContent = button.dataset.demoMessage || "데모 항목입니다.";
+            demoToast.classList.add("show");
+            demoToastTimer = window.setTimeout(() => {
+                demoToast.classList.remove("show");
+            }, 1800);
+        });
+    });
 </script>
-
-
-<div id="screenOverlay" class="screen-overlay"></div>
-<div id="walletWrapper" class="wallet-wrapper">
-    <div class="cards-stack">
-        <button class="card card-1" th:onclick="|location.href='@{/user/profile}'|">👤 프로필</button>
-        <button class="card card-2" th:onclick="|location.href='@{/card/mycard}'|">💳 내 명함</button>
-        <button class="card card-3" th:onclick="|location.href='@{/settings}'|">⚙️ 설정</button>
-        <button class="card card-4" th:onclick="|location.href='@{/googleOauth}'|">G 이메일 인증</button>
-    </div>
-    <div id="walletIcon" class="wallet-icon">
-        <div class="wallet-detail"></div>
-        <span class="wallet-text">ALCARD</span>
-    </div>
-</div>
-
-<script th:src="@{/js/wallet.js}"></script>
 </body>
 </html>
