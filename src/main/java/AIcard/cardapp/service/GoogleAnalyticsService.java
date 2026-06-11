@@ -3,7 +3,9 @@ package AIcard.cardapp.service;
 import AIcard.cardapp.DTO.GoogleAnalyticsDTO;
 import com.google.analytics.data.v1beta.*;
 import com.google.auth.oauth2.GoogleCredentials;
-import org.springframework.core.io.ClassPathResource;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -13,27 +15,31 @@ import AIcard.cardapp.repository.BusinessCardRepository;
 import AIcard.cardapp.entity.BusinessCard;
 import lombok.RequiredArgsConstructor;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class GoogleAnalyticsService {
 
     private final String PROPERTY_ID = "539587337";
     private final BusinessCardRepository businessCardRepository;
+    @Value("${google.analytics.key-path}")
+    private Resource keyFile;
 
     public GoogleAnalyticsDTO.Response getCardViewStatistics(Long cardId) {
+
         List<GoogleAnalyticsDTO.DailyViewCount> statList = new ArrayList<>();
 
         try {
             BusinessCard card = businessCardRepository.findById(cardId)
                     .orElseThrow(() -> new RuntimeException("명함을 찾을 수 없습니다."));
-            String publicUrl = card.getPublicUrl();
 
+            String publicUrl = card.getPublicUrl();
             String targetPath = "/card/public/card/" + publicUrl;
 
-            ClassPathResource resource = new ClassPathResource("ga-key.json");
+            try (InputStream inputStream = keyFile.getInputStream()) {
 
-            try (InputStream inputStream = resource.getInputStream()) {
-                GoogleCredentials credentials = GoogleCredentials.fromStream(inputStream)
+                GoogleCredentials credentials = GoogleCredentials
+                        .fromStream(inputStream)
                         .createScoped("https://www.googleapis.com/auth/analytics.readonly");
 
                 BetaAnalyticsDataSettings settings = BetaAnalyticsDataSettings.newBuilder()
