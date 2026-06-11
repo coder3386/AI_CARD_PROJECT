@@ -65,13 +65,24 @@ public class ManagerService {
     }
 
     @Transactional
-    public String changeCardStatus(Long cardId, String newStatus) {
+    public String changeCardStatus(Long cardId, String newStatus, String adminLoginId) {
         String normalizedStatus = normalizeCardStatus(newStatus);
         BusinessCard card = businessCardRepository.findById(cardId)
                 .orElseThrow(() -> new IllegalArgumentException("Card not found. cardId=" + cardId));
 
+        String oldStatus = card.getStatus();
         card.setStatus(normalizedStatus);
-        return displayCardTitle(card);
+        String title = displayCardTitle(card);
+
+        log.info("[MGR-ACTION]|운영자 명함 상태 변경. adminId={}, cardId={}, title={}, status={} -> {}",
+                adminLoginId,
+                cardId,
+                title,
+                oldStatus,
+                normalizedStatus
+        );
+
+        return title;
     }
 
     // 현재 접속 중인 사용자 세션 조회

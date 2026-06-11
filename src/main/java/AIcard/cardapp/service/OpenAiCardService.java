@@ -18,6 +18,8 @@ import java.util.Map;
 @Service
 public class OpenAiCardService {
 
+    private static final org.slf4j.Logger userLog = org.slf4j.LoggerFactory.getLogger("USER_LOGGER");
+
     private static final List<String> REQUIRED_IDS = List.of(
             "cardRoot",
             "nameText",
@@ -311,6 +313,27 @@ public class OpenAiCardService {
                 - Choose portfolio_grid for creative, portfolio, designer, project, skill-heavy, visual-grid moods.
                 - Templates are style references, not rigid layout locks. Keep the selected template's mood, palette, and visual language, but freely adjust placement when the user's text or extra items need more room.
                 - For all templates (modern_dark, simple_white, portfolio_grid), choose the final coordinates by content fit. Never reuse a template's original box coordinates if they make introText, contact, or portfolioArea collide.
+                - The three template concepts must have clearly different geometry. Do not create the same layout with only different colors.
+
+                Concept-specific layout rules:
+                - If layoutJson.templateCode is modern_dark:
+                  - Use an asymmetric tech layout with a strong dark navy or black background and cyan, mint, or blue accents.
+                  - Put nameText, jobText, companyText, departmentText, and introText mainly in a left hero column.
+                  - Put profileImage near the upper-right, contact details in a compact right-side panel or row, and portfolioArea in a separate lower-right or bottom-right panel.
+                  - Use glassy panels, thin neon lines, or dashboard-like sections sparingly. Keep the name large and dominant.
+                  - Keep the upper-left hero text zone clean. Do not place decorative circles, badges, blobs, gradients, avatars, or empty shapes over or near nameText, jobText, companyText, departmentText, or introText.
+                  - If decorative shapes are used, they must sit behind the content, avoid the text bounding boxes completely, and never reduce text readability.
+                  - Make portfolioArea fully visible inside cardRoot with at least 36px from the card edge. Its text must be light and readable on the dark background.
+                - If layoutJson.templateCode is simple_white:
+                  - Use a minimal resume-like layout with a mostly white or off-white background, dark text, subtle warm-gray or brown accents, and generous whitespace.
+                  - Avoid dark full-card backgrounds, heavy gradients, large decorative blocks, and many filled panels.
+                  - Use a clean two-column or editorial layout: nameText/jobText/introText on the left, companyText/departmentText/emailText/phoneText as neat rows on the right.
+                  - Put portfolioArea as a quiet bottom band or subtle lower section with thin separators, not as a heavy colorful card.
+                - If layoutJson.templateCode is portfolio_grid:
+                  - Use a clear creative grid layout, such as 2x2 blocks or a strong left column plus stacked right blocks.
+                  - Give portfolioArea the largest or most visually important block because this template is for projects, skills, and links.
+                  - Put nameText/jobText in one bold identity block, introText or project summary in another block, and contact details in a separate compact block.
+                  - Use stronger creative contrast, visible grid sections, and lively accent colors, but keep every block aligned and non-overlapping.
 
                 Return only this JSON format:
                 {
@@ -427,6 +450,8 @@ public class OpenAiCardService {
                 - Drawing description: %s
                 - Drawing layout JSON:
                 %s
+                - Interpreted drawing placement constraints:
+                %s
 
                 Extra portfolio, skill, certificate, and link items:
                 %s
@@ -434,12 +459,19 @@ public class OpenAiCardService {
                 Core drawing rules:
                 - Do not select an existing template.
                 - Set layoutJson.templateCode exactly to "drawing_custom".
+                - The drawing canvas is exactly 860px x 480px and uses the same coordinate system as cardRoot.
+                - Every drawingLayoutJson element with a non-empty role must be mapped to the matching required ID in HTML, CSS, and layoutJson.elements.
+                - Keep each mapped element in the same rough zone and relative order as the drawing. Do not move a left-side drawing element to the right side, or a top element to the bottom, unless it would otherwise overlap or clip.
+                - Treat drawn boxes as placement anchors, not final visual boxes. Preserve the intended zone, then polish spacing, alignment, sizing, and visual grouping.
+                - When cleaning the sketch, keep each element center close to the drawn center, but you may nudge, resize, align, or merge nearby regions to make the card look professionally designed.
+                - Use absolute or clearly bounded positioning for the main drawn regions so the final result follows the sketch instead of falling back to a generic template layout.
                 - Treat drawingLayoutJson as the user's intended placement and grouping.
                 - Preserve the relative intent of the sketch, but do not copy messy or cramped coordinates blindly.
                 - If the sketch is too close to an edge, overlapping, too small, or visually rough, snap it into clean alignment.
                 - Use the user's sketch to decide where profileImage, nameText, jobText, introText, emailText, phoneText, portfolioArea, and linkArea should roughly go.
                 - If the user did not draw a required element, place it naturally in the remaining space.
                 - The final card must look polished, not like raw wireframe boxes.
+                - Do not render a separate visible rounded panel for every drawn rectangle. Use visible panels only for meaningful grouped sections; simple text can sit directly in open space or in one refined shared group.
                 - Use the drawing description only as design guidance. Do not copy it into introText unless the same content was provided as Intro.
 
                 Return only this JSON format:
@@ -474,6 +506,9 @@ public class OpenAiCardService {
                 - Do not create headlineText.
                 - Use the exact Name value for nameText. Do not add words such as "card", "business card", or "명함" after the name.
                 - Use only the user's provided job title, company, department, intro, email, and phone values. Do not invent missing personal details.
+                - If drawingLayoutJson includes role=nameText, role=jobText, role=introText, role=emailText, role=phoneText, role=profileImage, or role=portfolioArea, those IDs must be positioned according to the drawn box for that role.
+                - nameText must be optically centered and balanced inside its intended region. Do not anchor the name to the lower-left corner of the drawn box.
+                - profileImage must show the full uploaded photo without cropping the face. If the drawn profile box is too short or too wide, refine it into a neat square or portrait frame within the same rough zone.
 
                 Portfolio/extra area rules:
                 - portfolioArea must be a single empty placeholder container. The server will inject the Portfolio / Skills / Links title and all chips/buttons later.
@@ -497,9 +532,10 @@ public class OpenAiCardService {
                 - Treat portfolioArea as a real occupied panel even if your HTML leaves it empty. The server will inject the Portfolio / Skills / Links title and up to 8 buttons later, so reserve the full 360px x 178px rectangle.
                 - No other section may be behind, under, inside, or touching the future portfolioArea rectangle.
                 - If the sketch puts too many regions in one column, reorganize into a clean two-column or top/bottom layout while preserving the user's rough intent.
-                - Do not copy rough drawing boxes as literal visible boxes if that creates a cluttered layout. Convert them into polished aligned sections.
+                - Do not copy rough drawing boxes as literal visible boxes if that creates a cluttered layout. Convert them into polished aligned sections with consistent padding, radius, and spacing.
                 - Keep introText in a bounded readable block. If the intro is long, reduce font size, wrap text, or expand the block.
                 - Contact details must remain readable, fully inside their box, and must not sit under portfolioArea.
+                - Text inside any bounded region must use display:flex or equivalent centering when appropriate, with consistent padding and line-height. No text should sit awkwardly at a bottom-left corner.
                 - Do a final mental bounding-box check before answering: every visible text line must be fully inside cardRoot, every panel must fit in 860x480, and no section may cover another section.
                 - Avoid large empty decorative boxes when content is crowded.
                 - Use CSS box-sizing: border-box and overflow-wrap: anywhere on long text containers where needed.
@@ -514,6 +550,7 @@ public class OpenAiCardService {
                 safe(card.getPhone()),
                 safe(request.getDrawingDescription()),
                 safeLayout(request.getDrawingLayoutJson()),
+                buildDrawingLayoutGuide(request.getDrawingLayoutJson()),
                 buildExtraInfo(request.getExtraItems())
         );
     }
@@ -606,6 +643,78 @@ public class OpenAiCardService {
         return drawingLayoutJson;
     }
 
+    private String buildDrawingLayoutGuide(String drawingLayoutJson) {
+        if (drawingLayoutJson == null || drawingLayoutJson.isBlank()) {
+            return "- No drawn elements. Use the text description and create a balanced default layout.";
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(drawingLayoutJson);
+            JsonNode elements = root.path("elements");
+            if (!elements.isArray() || elements.isEmpty()) {
+                return "- No drawn elements. Use the text description and create a balanced default layout.";
+            }
+
+            StringBuilder guide = new StringBuilder();
+            for (JsonNode element : elements) {
+                String role = text(element, "role");
+                if (role.isBlank()) {
+                    role = "unassigned";
+                }
+                String label = text(element, "text");
+                int x = element.path("x").asInt(0);
+                int y = element.path("y").asInt(0);
+                int width = element.path("width").asInt(0);
+                int height = element.path("height").asInt(0);
+                int centerX = x + width / 2;
+                int centerY = y + height / 2;
+
+                guide.append("- role=")
+                        .append(role)
+                        .append(", label=")
+                        .append(label.isBlank() ? "-" : label)
+                        .append(", box={x:")
+                        .append(x)
+                        .append(", y:")
+                        .append(y)
+                        .append(", width:")
+                        .append(width)
+                        .append(", height:")
+                        .append(height)
+                        .append("}, zone=")
+                        .append(horizontalZone(centerX))
+                        .append("-")
+                        .append(verticalZone(centerY))
+                        .append(". Keep #")
+                        .append(role)
+                        .append(" in this same rough zone after cleanup.\n");
+            }
+            return guide.toString();
+        } catch (Exception ex) {
+            return "- Drawing layout JSON could not be parsed. Use it only as raw reference and prioritize a clean, non-overlapping layout.";
+        }
+    }
+
+    private String horizontalZone(int centerX) {
+        if (centerX < 286) {
+            return "left";
+        }
+        if (centerX > 574) {
+            return "right";
+        }
+        return "center";
+    }
+
+    private String verticalZone(int centerY) {
+        if (centerY < 160) {
+            return "top";
+        }
+        if (centerY > 320) {
+            return "bottom";
+        }
+        return "middle";
+    }
+
     private String buildExtraInfo(List<CardExtraItemRequest> extraItems) {
         if (extraItems == null || extraItems.isEmpty()) {
             return "- none";
@@ -633,6 +742,8 @@ public class OpenAiCardService {
     }
 
     private AiCardResponse fallback(BusinessCard card, String prompt, String reason) {
+        userLog.warn("[USER-ACTION]|AI 생성 실패로 기본 템플릿 사용. cardId={}, reason={}", card.getCardId(), reason);
+
         String html = """
                 <div id="cardRoot" class="card-root">
                   <div id="profileImage" class="card-profile" aria-label="profile image"></div>

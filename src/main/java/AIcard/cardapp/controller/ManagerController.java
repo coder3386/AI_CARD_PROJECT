@@ -222,10 +222,12 @@ public class ManagerController {
     public String updateCardStatus(
             @RequestParam("cardId") Long cardId,
             @RequestParam("newStatus") String newStatus,
-            RedirectAttributes redirectAttributes
+            RedirectAttributes redirectAttributes,
+            Principal principal
     ) {
         try {
-            String title = managerService.changeCardStatus(cardId, newStatus);
+            String adminLoginId = principal == null ? "unknown" : principal.getName();
+            String title = managerService.changeCardStatus(cardId, newStatus, adminLoginId);
             String statusLabel = "ACTIVE".equals(newStatus) ? "\uD65C\uC131\uD654" : "\uBE44\uD65C\uC131\uD654";
             redirectAttributes.addFlashAttribute("successMessage", title + " \uBA85\uD568\uC774 " + statusLabel + "\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
         } catch (RuntimeException ex) {

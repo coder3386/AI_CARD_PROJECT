@@ -651,35 +651,41 @@ public class HtmlExportService {
                 .card-extra-empty { min-height: 48px; display: grid; place-items: center; border: 1px dashed rgba(255,255,255,.22); border-radius: 12px; color: inherit; opacity: .42; font-size: 12px; font-weight: 700; }
                 #cardRoot { position: relative; overflow: hidden; }
                 #profileImage { overflow: hidden; }
-                #profileImage img.card-profile-uploaded { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+                #profileImage img.card-profile-uploaded { width: 100%; height: 100%; object-fit: contain; object-position: center; border-radius: inherit; display: block; background: rgba(255,255,255,.92); }
                 #portfolioArea:not(:empty), #linkArea:not(:empty) {
                   box-sizing: border-box;
-                  width: min(360px, calc(100% - 72px)) !important;
-                  max-width: 360px !important;
+                  max-width: min(360px, calc(100% - 72px)) !important;
                   z-index: 5;
                   padding: 18px !important;
-                  border: 1px solid rgba(255,255,255,.18) !important;
+                  border: 1px solid rgba(255,255,255,.24) !important;
                   border-radius: 18px !important;
-                  color: inherit !important;
-                  background: rgba(255,255,255,.08) !important;
+                  color: #f8fafc !important;
+                  background: rgba(15,23,42,.86) !important;
                   backdrop-filter: blur(8px);
-                  box-shadow: none !important;
+                  box-shadow: 0 18px 44px rgba(2,6,23,.22) !important;
                 }
                 #portfolioArea:not(:empty) {
-                  right: 36px !important;
-                  left: auto !important;
                   max-height: 178px;
                 }
                 #linkArea:not(:empty) {
-                  right: 36px !important;
-                  left: auto !important;
                   max-height: 96px;
                 }
                 #portfolioArea:empty, #linkArea:empty { display: none !important; }
                 #portfolioArea, #linkArea { box-sizing: border-box; overflow: hidden; }
-                #portfolioArea .card-extra-title, #linkArea .card-extra-title { color: inherit !important; }
+                #portfolioArea .card-extra-title, #linkArea .card-extra-title { color: #f8fafc !important; }
                 #portfolioArea .card-extra-list, #linkArea .card-extra-list { max-width: 100%; max-height: 100%; overflow: hidden; }
-                #portfolioArea .card-extra-item, #linkArea .card-extra-item { min-width: 0; max-width: 100%; }
+                #portfolioArea .card-extra-item, #linkArea .card-extra-item {
+                  min-width: 0;
+                  max-width: 100%;
+                  color: #f8fafc !important;
+                  background: rgba(255,255,255,.1) !important;
+                  border-color: rgba(255,255,255,.2) !important;
+                }
+                #portfolioArea .card-extra-empty, #linkArea .card-extra-empty {
+                  color: #cbd5e1 !important;
+                  border-color: rgba(203,213,225,.3) !important;
+                  opacity: .76 !important;
+                }
                 .card-extra-modal-backdrop {
                   position: fixed;
                   inset: 0;

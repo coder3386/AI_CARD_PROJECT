@@ -3,6 +3,9 @@
     const canvasHeight = 480;
     const minShapeWidth = 60;
     const minShapeHeight = 36;
+    const fixedRoleSizes = {
+        portfolioArea: { width: 360, height: 178 }
+    };
     const maxExtraItems = 8;
     const roleLabels = {
         "": "자동 추정",
@@ -219,6 +222,9 @@
         const handle = event.currentTarget;
         const shape = handle.closest(".drawing-shape");
         const direction = handle.dataset.resizeDirection || "";
+        if (isFixedSizeRole(getShapeRole(shape))) {
+            return;
+        }
         selectShape(shape);
 
         const startX = event.clientX;
@@ -332,6 +338,32 @@
         if (badge) {
             badge.textContent = roleLabels[role] || role;
         }
+        applyFixedRoleSize(shape, role);
+    }
+
+    function applyFixedRoleSize(shape, role) {
+        const roleName = role || getShapeRole(shape);
+        const size = fixedRoleSizes[roleName];
+        shape.classList.toggle("fixed-size", Boolean(size));
+        if (!size) {
+            return;
+        }
+
+        const nextWidth = Math.min(size.width, canvasWidth);
+        const nextHeight = Math.min(size.height, canvasHeight);
+        const currentLeft = parseFloat(shape.style.left || "0");
+        const currentTop = parseFloat(shape.style.top || "0");
+        const nextLeft = clamp(currentLeft, 0, canvasWidth - nextWidth);
+        const nextTop = clamp(currentTop, 0, canvasHeight - nextHeight);
+
+        shape.style.left = `${nextLeft}px`;
+        shape.style.top = `${nextTop}px`;
+        shape.style.width = `${nextWidth}px`;
+        shape.style.height = `${nextHeight}px`;
+    }
+
+    function isFixedSizeRole(role) {
+        return Object.prototype.hasOwnProperty.call(fixedRoleSizes, role);
     }
 
     function updateShapeSummary() {
