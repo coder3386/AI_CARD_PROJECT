@@ -5,11 +5,10 @@ import AIcard.cardapp.DTO.CardDrawingCreateRequest;
 import AIcard.cardapp.DTO.CardUpdateTextRequest;
 import AIcard.cardapp.entity.BusinessCard;
 import AIcard.cardapp.entity.BusinessCardDetail;
-import AIcard.cardapp.service.AiCardService;
-import AIcard.cardapp.service.CardQrService;
-import AIcard.cardapp.service.CurrentUserService;
-import AIcard.cardapp.service.PublicCardUrlService;
+import AIcard.cardapp.service.*;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -181,9 +180,41 @@ public class AiCardController {
 
     @GetMapping("/public/card/{publicUrl}")
     public ResponseEntity<String> publicCard(@PathVariable String publicUrl, HttpServletRequest request) {
+
+        Logger accessLogger = LoggerFactory.getLogger("ACCESS_LOGGER");
+
         try {
             Long viewerUserId = currentUserService.getCurrentUserIdOrNull();
             String html = aiCardService.readPublicCard(publicUrl, viewerUserId);
+
+            String clientIp = request.getRemoteAddr();
+            String requestUrl = request.getRequestURI();
+
+            accessLogger.info("[ACCESS] IP: {} | 요청 URL: {}", clientIp, requestUrl);
+
+            try {
+                BusinessCard card = aiCardService.getCardByUrl(publicUrl);
+
+                if (card != null && card.getGaSettings() != null) {
+                    String trackingId = card.getGaSettings().getMeasurementId();
+
+                    String gaScript = String.format("""
+                        <script async src="https://www.googletagmanager.com/gtag/js?id=%s"></script>
+                        <script>
+                          window.dataLayer = window.dataLayer || [];
+                          function gtag(){dataLayer.push(arguments);}
+                          gtag('js', new Date());
+                          gtag('config', '%s');
+                        </script>
+                        """, trackingId, trackingId);
+
+                    html = html.replace("</head>", gaScript + "</head>");
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ GA 스크립트 삽입 실패: " + e.getMessage());
+                e.printStackTrace();
+            }
+
             return ResponseEntity.ok()
                     .contentType(MediaType.TEXT_HTML)
                     .body(html);

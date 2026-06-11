@@ -1,75 +1,81 @@
 package AIcard.cardapp.service;
 
 import AIcard.cardapp.DTO.GoogleContactDTO;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.services.people.v1.PeopleService;
 import com.google.api.services.people.v1.model.*;
-import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.auth.oauth2.AccessToken;
-import com.google.auth.oauth2.GoogleCredentials;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import AIcard.cardapp.repository.BusinessCardRepository;
+import AIcard.cardapp.entity.BusinessCard;
 
 import java.util.Collections;
 
 @Service
+@RequiredArgsConstructor
 public class GoogleContactService {
 
-    /**
-     * 프론트엔드에서 받은 Access Token과 DTO를 사용하여 구글 주소록에 저장하는 핵심 메서드
-     */
-    public void saveContact(String accessTokenStr, GoogleContactDTO contactDto) throws Exception {
+    private final GoogleAuthService authService; // 토큰 관리 (기존 사용 중인 서비스)
+    private final GooglePeopleClient peopleClient; // 주소록 통신 전담
+    private final BusinessCardRepository businessCardRepository;
 
-        // 1. 전달받은 Access Token 문자열을 기반으로 구글 인증 객체(PeopleService) 동적 생성
-        AccessToken accessToken = new AccessToken(accessTokenStr, null);
-        GoogleCredentials credentials = GoogleCredentials.create(accessToken);
+    public void saveContact(String accessToken, GoogleContactDTO contactDto) throws Exception {
+        // DTO 데이터를 구글 API가 이해할 수 있는 Person 객체로 변환
+        Person person = convertToPerson(contactDto);
 
-        PeopleService peopleService = new PeopleService.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                GsonFactory.getDefaultInstance(),
-                new HttpCredentialsAdapter(credentials))
-                .setApplicationName("AI-Card-Project")
-                .build();
+        // 주소록 통신 전담 클라이언트(peopleClient)에게 토큰과 데이터 전달하여 저장 수행
+        peopleClient.createContact(accessToken, person);
 
-        // 2. 구글이 이해할 수 있는 '사람(Person)' 객체 생성
-        Person contactToCreate = new Person();
+        System.out.println("✅ 구글 주소록 직접 토큰 저장 성공: " + contactDto.getName());
+    }
 
-        // 3. 이름 설정
-        Name name = new Name().setGivenName(contactDto.getName());
-        contactToCreate.setNames(Collections.singletonList(name));
 
-        // 4. 전화번호 설정
-        PhoneNumber phone = new PhoneNumber().setValue(contactDto.getPhoneNumber());
-        contactToCreate.setPhoneNumbers(Collections.singletonList(phone));
+    // 사용자의 userId를 통해 세션/DB에 저장된 구글 토큰을 연동하여 저장
+    public void saveContactByUserId(Long userId, GoogleContactDTO contactDto) throws Exception {
+        // 유효한 토큰 확보 (만료 시 자동 갱신 로직 포함)
+        String accessToken = authService.getValidAccessToken(userId);
+        // 2. 주소록 저장 수행
+        saveContact(accessToken, contactDto);
+    }
 
-        // 5. 이메일 설정 (값이 있을 경우에만)
-        if (contactDto.getEmail() != null && !contactDto.getEmail().isEmpty()) {
-            EmailAddress email = new EmailAddress().setValue(contactDto.getEmail());
-            contactToCreate.setEmailAddresses(Collections.singletonList(email));
+    public void saveCardToGoogleContacts(Long cardId, Long userId) throws Exception {
+        BusinessCard card = businessCardRepository.findById(cardId)
+                .orElseThrow(() -> new IllegalArgumentException("명함을 찾을 수 없습니다."));
+
+        GoogleContactDTO contactDto = new GoogleContactDTO();
+        contactDto.setName(card.getDisplayName());
+        contactDto.setPhoneNumber(card.getPhone());
+        contactDto.setEmail(card.getEmail());
+        contactDto.setOrganization(card.getCompany());
+        contactDto.setJobTitle(card.getJobTitle());
+        contactDto.setNotes("명함 URL: http://wooserver76.iptime.org/card/public/card/" + card.getPublicUrl());
+
+        saveContactByUserId(userId, contactDto);
+    }
+
+    private Person convertToPerson(GoogleContactDTO dto) {
+        Person person = new Person();
+
+        Name name = new Name().setGivenName(dto.getName());
+        person.setNames(Collections.singletonList(name));
+        if (dto.getPhoneNumber() != null) {
+            PhoneNumber phone = new PhoneNumber().setValue(dto.getPhoneNumber());
+            person.setPhoneNumbers(Collections.singletonList(phone));
         }
-
-        // 6. 회사명(소속) 및 직함 설정 (값이 있을 경우에만)
-        if ((contactDto.getOrganization() != null && !contactDto.getOrganization().isEmpty()) ||
-                (contactDto.getJobTitle() != null && !contactDto.getJobTitle().isEmpty())) {
-
+        if (dto.getEmail() != null && !dto.getEmail().isEmpty()) {
+            EmailAddress email = new EmailAddress().setValue(dto.getEmail());
+            person.setEmailAddresses(Collections.singletonList(email));
+        }
+        if ((dto.getOrganization() != null && !dto.getOrganization().isEmpty()) ||
+                (dto.getJobTitle() != null && !dto.getJobTitle().isEmpty())) {
             Organization org = new Organization()
-                    .setName(contactDto.getOrganization())
-                    .setTitle(contactDto.getJobTitle());
-            contactToCreate.setOrganizations(Collections.singletonList(org));
+                    .setName(dto.getOrganization())
+                    .setTitle(dto.getJobTitle());
+            person.setOrganizations(Collections.singletonList(org));
+        }
+        if (dto.getNotes() != null && !dto.getNotes().isEmpty()) {
+            Biography bio = new Biography().setValue(dto.getNotes()).setContentType("TEXT_PLAIN");
+            person.setBiographies(Collections.singletonList(bio));
         }
 
-        // 7. 메모(AI 명함 추출 특징 등) 설정 (값이 있을 경우에만)
-        if (contactDto.getNotes() != null && !contactDto.getNotes().isEmpty()) {
-            Biography bio = new Biography()
-                    .setValue(contactDto.getNotes())
-                    .setContentType("TEXT_PLAIN");
-            contactToCreate.setBiographies(Collections.singletonList(bio));
-        }
-
-        // 8. 생성한 동적 peopleService 인스턴스를 통해 API 호출 및 실제 저장 실행
-        peopleService.people().createContact(contactToCreate)
-                .execute();
-
-        System.out.println("구글 주소록에 명함 저장 완료: " + contactDto.getName());
+        return person;
     }
 }

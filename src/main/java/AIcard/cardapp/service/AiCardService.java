@@ -613,6 +613,14 @@ public class AiCardService {
         return value == null || value.isBlank() ? fallback : value;
     }
 
+    @Transactional(readOnly = true)
+    public BusinessCard getCardByUrl(String publicUrl) {
+        return businessCardRepository.findByPublicUrl(publicUrl)
+                .orElseThrow(() -> new IllegalArgumentException("해당 URL의 명함을 찾을 수 없습니다."));
+    }
+
+    public List<BusinessCard> getCardsByUserId(Long userId) {
+        return businessCardRepository.findByUserId(userId);
     private String displayCardTitle(BusinessCard card) {
         if (card.getTitle() != null && !card.getTitle().isBlank()) {
             return card.getTitle();

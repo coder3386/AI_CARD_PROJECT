@@ -65,6 +65,18 @@
                         QR
                     </button>
 
+                    <a class="my-card-analytics-button"
+                       th:href="@{/cards/{cardId}/analytics(cardId=${card.cardId})}">
+                        통계
+                    </a>
+
+                    <button class="my-card-save-button"
+                            type="button"
+                            th:onclick="'saveToGoogleContacts(' + ${card.cardId} + ')'"
+                            style="background-color: #34A853; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                        주소록 저장
+                    </button>
+
                     <form th:action="@{/cards/my/{cardId}/delete(cardId=${card.cardId})}"
                           method="post"
                           onsubmit="return confirm('이 명함을 삭제하시겠습니까? 삭제 후 복구할 수 없습니다.');">
@@ -130,6 +142,26 @@
             }
         });
     })();
+</script>
+<script>
+    function saveToGoogleContacts(cardId) {
+        if (!confirm("이 명함을 구글 주소록에 저장하시겠습니까?")) return;
+
+        fetch(`/card/api/contacts/save?cardId=${cardId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include'
+        })
+            .then(response => {
+                if (response.ok) {
+                    alert("구글 주소록에 성공적으로 저장되었습니다! ✅");
+                } else if (response.status === 401) {
+                    alert("인증 실패: 로그인이 필요한 기능입니다.");
+                } else {
+                    alert("저장 실패. 서버 로그를 확인하세요.");
+                }
+            });
+    }
 </script>
 </body>
 </html>

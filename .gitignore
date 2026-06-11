@@ -38,3 +38,6 @@ build/
 generated-cards/
 .m2repo/
 spring-boot-run*.log
+
+### Google Oauth key ###
+src/main/resources/ga-key.json
