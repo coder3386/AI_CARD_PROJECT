@@ -53,8 +53,7 @@
                     <hr class="dropdown-divider">
 
                     <a th:href="@{/card/edit}" class="dropdown-item">계정 관리</a>
-                    <a th:href="@{/card/settings}" class="dropdown-item">임시텍스트 - 추가 가능</a>
-                    <a th:href="@{/testpage}" class="dropdown-item">[테스트페이지]최종단계에서 지울것</a>
+                    <a th:href="@{/manager}" class="dropdown-item" sec:authorize="hasAnyRole('MANAGER', 'ADMIN')">매니저 페이지</a>
 
                     <hr class="dropdown-divider">
 

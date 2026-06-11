@@ -1,6 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>AI Card - 내 문의 내역</title>
@@ -23,7 +22,7 @@
             <a th:href="@{/inquiry/create}">문의하기</a>
         </nav>
         <div class="nav-auth">
-            <a th:href="@{/card/login}" class="btn-primary">이전으로</a>
+            <a th:href="@{/}" class="btn-primary">이전으로</a>
         </div>
     </div>
 </header>
@@ -40,7 +39,9 @@
                 <div class="form-group">
                     <textarea name="content" class="form-control" placeholder="문의하실 내용을 상세히 적어주세요." required></textarea>
                 </div>
-                <button type="submit" class="btn-primary large" style="border: none; cursor: pointer; width: 100%;">문의 등록하기</button>
+                <button type="submit" class="btn-primary large" style="border: none; cursor: pointer; width: 100%;">문의
+                    등록하기
+                </button>
             </form>
         </div>
 
@@ -62,13 +63,16 @@
                         <td>
                             <strong style="font-size: 1.1rem;" th:text="${inquiry.title}">문의 제목입니다.</strong>
 
-                            <div class="answer-box" th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}">
+                            <div class="answer-box"
+                                 th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}">
                                 ↳ <strong>관리자 답변:</strong> <span th:text="${inquiry.answer}">답변 내용이 여기에 표시됩니다.</span>
                             </div>
                         </td>
                         <td style="text-align: center;">
-                            <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).WAITING}" class="badge-waiting">답변대기중</span>
-                            <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}" class="badge-completed">답변완료</span>
+                            <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).WAITING}"
+                                  class="badge-waiting">답변대기중</span>
+                            <span th:if="${inquiry.status == T(AIcard.cardapp.entity.InquiryStatus).COMPLETED}"
+                                  class="badge-completed">답변완료</span>
                         </td>
                     </tr>
 
