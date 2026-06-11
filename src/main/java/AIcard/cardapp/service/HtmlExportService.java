@@ -2,11 +2,14 @@ package AIcard.cardapp.service;
 
 import AIcard.cardapp.entity.BusinessCard;
 import AIcard.cardapp.entity.CardAiResult;
+import AIcard.cardapp.entity.CardLayout;
 import AIcard.cardapp.entity.CardLink;
 import AIcard.cardapp.repository.BusinessCardRepository;
 import AIcard.cardapp.repository.CardAiResultRepository;
 import AIcard.cardapp.repository.CardLayoutRepository;
 import AIcard.cardapp.repository.CardLinkRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,13 +30,29 @@ import java.util.regex.Pattern;
 public class HtmlExportService {
 
     private static final int CARD_WIDTH = 860;
+    private static final int CARD_HEIGHT = 480;
     private static final int SAFE_MARGIN = 36;
     private static final int EXTRA_AREA_WIDTH = 360;
+    private static final int EXTRA_AREA_HEIGHT = 178;
+    private static final int LINK_AREA_HEIGHT = 96;
+    private static final String[] CARD_CHILD_IDS = {
+            "nameText",
+            "jobText",
+            "companyText",
+            "departmentText",
+            "introText",
+            "emailText",
+            "phoneText",
+            "profileImage",
+            "portfolioArea",
+            "linkArea"
+    };
 
     private final BusinessCardRepository businessCardRepository;
     private final CardAiResultRepository cardAiResultRepository;
     private final CardLayoutRepository cardLayoutRepository;
     private final CardLinkRepository cardLinkRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${app.generated-card-dir:generated-cards}")
     private String generatedCardDir;
@@ -59,15 +79,23 @@ public class HtmlExportService {
         CardAiResult aiResult = cardAiResultRepository.findTopByCardIdOrderByCreatedAtDesc(cardId)
                 .orElseThrow(() -> new IllegalArgumentException("AI 생성 결과를 찾을 수 없습니다. cardId=" + cardId));
 
-        cardLayoutRepository.findByCardId(cardId);
+        String layoutJson = cardLayoutRepository.findByCardId(cardId)
+                .map(CardLayout::getLayoutJson)
+                .orElse("");
 
         String htmlFragment = removeStandaloneExtraItems(aiResult.getGeneratedHtml(), card.getCardId());
         htmlFragment = removeAiGeneratedExtraPanels(htmlFragment, card.getCardId());
+        htmlFragment = repairMalformedClosingTags(htmlFragment);
+        htmlFragment = keepRequiredElementsInsideCardRoot(htmlFragment);
+        htmlFragment = ensureRequiredElementsExist(htmlFragment, card);
         htmlFragment = applyBusinessText(htmlFragment, card);
         htmlFragment = keepExtraAreaInlineStylesInsideCard(htmlFragment);
         String css = removeAiGeneratedExtraPseudoContent(aiResult.getGeneratedCss());
         css = keepExtraAreasInsideCard(css);
         htmlFragment = applyExtraItems(htmlFragment, card.getCardId());
+        htmlFragment = keepRequiredElementsInsideCardRoot(htmlFragment);
+        htmlFragment = applyLayoutJsonStyles(htmlFragment, layoutJson);
+        htmlFragment = applyRequiredElementLayoutFallbacks(htmlFragment, css);
         String fullHtml = wrapFullHtml(htmlFragment, css);
 
         Path cardDirectory = Path.of(generatedCardDir, "card_" + cardId);
@@ -114,7 +142,8 @@ public class HtmlExportService {
         }
         String exported = readExportedDocument(card.get());
         if (!exported.isBlank() && exported.contains("ai-card-inline-style")
-                && !hasAiGeneratedExtraPseudoContent(exported)) {
+                && !hasAiGeneratedExtraPseudoContent(exported)
+                && !needsExportRepair(exported)) {
             return exported;
         }
         return exportCard(cardId);
@@ -197,6 +226,446 @@ public class HtmlExportService {
         return replaceElementHtml(html, "profileImage", imageHtml);
     }
 
+    private String ensureRequiredElementsExist(String html, BusinessCard card) {
+        String updated = html == null ? "" : html;
+        ElementBlock cardRoot = findElementById(updated, "cardRoot", 0);
+        if (cardRoot == null) {
+            return updated;
+        }
+
+        List<String> missingElements = new ArrayList<>();
+        if (card.hasProfileImage() && findElementById(updated, "profileImage", 0) == null) {
+            missingElements.add("""
+                    <div id="profileImage" class="card-profile-fallback" style="position:absolute; right:48px; top:42px; width:140px; height:140px; border-radius:24px; overflow:hidden; z-index:3;"></div>
+                    """.strip());
+        }
+        if (findElementById(updated, "portfolioArea", 0) == null) {
+            missingElements.add("""
+                    <div id="portfolioArea" class="card-portfolio" style="position:absolute; right:48px; bottom:36px; width:360px; height:178px;"></div>
+                    """.strip());
+        }
+        if (findElementById(updated, "linkArea", 0) == null) {
+            missingElements.add("""
+                    <div id="linkArea" class="card-link" style="display:none;"></div>
+                    """.strip());
+        }
+        if (missingElements.isEmpty()) {
+            return updated;
+        }
+
+        String insertion = "\n" + String.join("\n", missingElements) + "\n";
+        return updated.substring(0, cardRoot.closeStart())
+                + insertion
+                + updated.substring(cardRoot.closeStart());
+    }
+
+    private String keepRequiredElementsInsideCardRoot(String html) {
+        String updated = html == null ? "" : html;
+        ElementBlock cardRoot = findElementById(updated, "cardRoot", 0);
+        if (cardRoot == null) {
+            return updated;
+        }
+
+        List<ElementBlock> misplacedElements = new ArrayList<>();
+        for (String id : CARD_CHILD_IDS) {
+            misplacedElements.addAll(findElementsOutsideCardRoot(updated, id, cardRoot));
+        }
+        if (misplacedElements.isEmpty()) {
+            return updated;
+        }
+
+        misplacedElements.sort((left, right) -> Integer.compare(right.start(), left.start()));
+        List<String> movedHtml = new ArrayList<>();
+        for (ElementBlock element : misplacedElements) {
+            movedHtml.add(0, element.html());
+            updated = updated.substring(0, element.start()) + updated.substring(element.end());
+        }
+
+        ElementBlock updatedCardRoot = findElementById(updated, "cardRoot", 0);
+        if (updatedCardRoot == null) {
+            return updated;
+        }
+
+        String insertion = "\n" + String.join("\n", movedHtml) + "\n";
+        return updated.substring(0, updatedCardRoot.closeStart())
+                + insertion
+                + updated.substring(updatedCardRoot.closeStart());
+    }
+
+    private String applyLayoutJsonStyles(String html, String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return html;
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(layoutJson);
+            JsonNode elements = root.path("elements");
+            if (!elements.isArray()) {
+                return html;
+            }
+
+            int sourceWidth = positiveOrDefault(root.path("canvasWidth").asInt(CARD_WIDTH), CARD_WIDTH);
+            int sourceHeight = positiveOrDefault(root.path("canvasHeight").asInt(CARD_HEIGHT), CARD_HEIGHT);
+            String updated = html == null ? "" : html;
+            List<String> layoutRoles = new ArrayList<>();
+            for (JsonNode element : elements) {
+                String role = text(element.path("role").asText()).trim();
+                if (isCardChildRole(role) && !"linkArea".equals(role) && !layoutRoles.contains(role)) {
+                    layoutRoles.add(role);
+                }
+            }
+            updated = moveElementsToCardRoot(updated, layoutRoles);
+
+            for (JsonNode element : elements) {
+                String role = text(element.path("role").asText()).trim();
+                if (!isCardChildRole(role) || "linkArea".equals(role)) {
+                    continue;
+                }
+                if (!element.has("x") || !element.has("y") || !element.has("width") || !element.has("height")) {
+                    continue;
+                }
+
+                int x = scaleCoordinate(element.path("x").asInt(), sourceWidth, CARD_WIDTH);
+                int y = scaleCoordinate(element.path("y").asInt(), sourceHeight, CARD_HEIGHT);
+                int width = scaleCoordinate(element.path("width").asInt(), sourceWidth, CARD_WIDTH);
+                int height = scaleCoordinate(element.path("height").asInt(), sourceHeight, CARD_HEIGHT);
+                LayoutBox box = clampLayoutBox(role, x, y, width, height);
+                updated = addInlineStyleToElement(updated, role, buildLayoutStyle(role, box), false);
+            }
+            return updated;
+        } catch (Exception ignored) {
+            return html;
+        }
+    }
+
+    private String moveElementsToCardRoot(String html, List<String> roles) {
+        if (roles.isEmpty()) {
+            return html;
+        }
+
+        ElementBlock cardRoot = findElementById(html, "cardRoot", 0);
+        if (cardRoot == null) {
+            return html;
+        }
+
+        List<ElementBlock> roleElements = new ArrayList<>();
+        for (String role : roles) {
+            ElementBlock element = findElementById(html, role, 0);
+            if (element != null && element.start() > cardRoot.openEnd() && element.end() <= cardRoot.closeStart()) {
+                roleElements.add(element);
+            }
+        }
+        if (roleElements.isEmpty()) {
+            return html;
+        }
+
+        roleElements.sort((left, right) -> Integer.compare(right.start(), left.start()));
+        List<String> movedHtml = new ArrayList<>();
+        String updated = html;
+        for (ElementBlock element : roleElements) {
+            movedHtml.add(0, element.html());
+            updated = updated.substring(0, element.start()) + updated.substring(element.end());
+        }
+
+        ElementBlock updatedCardRoot = findElementById(updated, "cardRoot", 0);
+        if (updatedCardRoot == null) {
+            return updated;
+        }
+        return updated.substring(0, updatedCardRoot.closeStart())
+                + "\n" + String.join("\n", movedHtml) + "\n"
+                + updated.substring(updatedCardRoot.closeStart());
+    }
+
+    private boolean isCardChildRole(String role) {
+        for (String cardChildId : CARD_CHILD_IDS) {
+            if (cardChildId.equals(role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int positiveOrDefault(int value, int fallback) {
+        return value > 0 ? value : fallback;
+    }
+
+    private int scaleCoordinate(int value, int sourceSize, int targetSize) {
+        if (sourceSize <= 0 || sourceSize == targetSize) {
+            return value;
+        }
+        return Math.round(value * (targetSize / (float) sourceSize));
+    }
+
+    private LayoutBox clampLayoutBox(String role, int x, int y, int width, int height) {
+        int safeWidth = Math.max(minWidth(role), Math.min(width, CARD_WIDTH));
+        int safeHeight = Math.max(minHeight(role), Math.min(height, CARD_HEIGHT));
+        int safeX = Math.max(0, Math.min(x, CARD_WIDTH - safeWidth));
+        int safeY = Math.max(0, Math.min(y, CARD_HEIGHT - safeHeight));
+        return new LayoutBox(safeX, safeY, safeWidth, safeHeight);
+    }
+
+    private int minWidth(String role) {
+        return switch (role) {
+            case "profileImage" -> 72;
+            case "nameText", "jobText" -> 100;
+            case "emailText" -> 210;
+            case "phoneText" -> 170;
+            case "introText" -> 180;
+            case "portfolioArea" -> EXTRA_AREA_WIDTH;
+            default -> 80;
+        };
+    }
+
+    private int minHeight(String role) {
+        return switch (role) {
+            case "profileImage" -> 72;
+            case "nameText", "jobText", "emailText", "phoneText" -> 36;
+            case "introText" -> 70;
+            case "portfolioArea" -> EXTRA_AREA_HEIGHT;
+            default -> 24;
+        };
+    }
+
+    private String buildLayoutStyle(String role, LayoutBox box) {
+        StringBuilder style = new StringBuilder();
+        style.append("position:absolute; left:")
+                .append(box.x())
+                .append("px; top:")
+                .append(box.y())
+                .append("px; width:")
+                .append(box.width())
+                .append("px; ");
+        style.append("height:").append(box.height()).append("px; overflow:hidden; ");
+        if ("emailText".equals(role) || "phoneText".equals(role)) {
+            style.append("padding:12px 14px; border-radius:16px; z-index:2; display:flex; align-items:center; ");
+        } else if (!"profileImage".equals(role) && !"portfolioArea".equals(role)) {
+            style.append("z-index:2; ");
+        }
+        if ("profileImage".equals(role)) {
+            style.append("z-index:3; ");
+        }
+        return style.toString();
+    }
+
+    private String applyRequiredElementLayoutFallbacks(String html, String css) {
+        String updated = html == null ? "" : html;
+        updated = addInlineStyleToElement(updated, "profileImage", "position:absolute; overflow:hidden; z-index:3;", false);
+
+        boolean phoneNeedsFallback = needsLooseContactFallback(updated, css, "phoneText");
+        boolean emailNeedsFallback = needsLooseContactFallback(updated, css, "emailText");
+        boolean contactNeedsFallback = phoneNeedsFallback || emailNeedsFallback;
+
+        if (phoneNeedsFallback) {
+            updated = addInlineStyleToElement(updated, "phoneText",
+                    "position:absolute; left:36px; top:344px; width:250px; min-height:44px; padding:12px 14px; border-radius:16px; z-index:2; display:flex; align-items:center;",
+                    true);
+        }
+
+        if (emailNeedsFallback) {
+            updated = addInlineStyleToElement(updated, "emailText",
+                    "position:absolute; left:36px; top:396px; width:250px; min-height:44px; padding:12px 14px; border-radius:16px; z-index:2; display:flex; align-items:center;",
+                    true);
+        }
+
+        ElementBlock company = findElementById(updated, "companyText", 0);
+        if (company != null && !isInsideClassBlock(updated, company, "card-meta")
+                && !hasPositionRule(css, "companyText")) {
+            updated = addInlineStyleToElement(updated, "companyText",
+                    "position:absolute; left:36px; top:" + (contactNeedsFallback ? 276 : 386) + "px; width:220px; min-height:18px; font-size:13px; line-height:1.25; z-index:2;",
+                    true);
+        }
+
+        ElementBlock department = findElementById(updated, "departmentText", 0);
+        if (department != null && !isInsideClassBlock(updated, department, "card-meta")
+                && !hasPositionRule(css, "departmentText")) {
+            updated = addInlineStyleToElement(updated, "departmentText",
+                    "position:absolute; left:36px; top:" + (contactNeedsFallback ? 300 : 408) + "px; width:220px; min-height:18px; font-size:12px; line-height:1.25; z-index:2;",
+                    true);
+        }
+        return updated;
+    }
+
+    private boolean needsLooseContactFallback(String html, String css, String id) {
+        ElementBlock element = findElementById(html, id, 0);
+        if (element == null || isInsideClassBlock(html, element, "card-contactGroup")) {
+            return false;
+        }
+
+        String openTag = html.substring(element.start(), element.openEnd());
+        return !hasStyleAttribute(openTag) && !hasPositionRule(css, id);
+    }
+
+    private boolean hasPositionRule(String css, String id) {
+        Pattern rulePattern = Pattern.compile("(?is)#[a-zA-Z0-9_-]*" + Pattern.quote(id) + "[^{]*\\{(.*?)\\}");
+        java.util.regex.Matcher matcher = rulePattern.matcher(css == null ? "" : css);
+        while (matcher.find()) {
+            String body = matcher.group(1).toLowerCase();
+            if (body.contains("position:")
+                    || readPixelProperty(body, "left") != null
+                    || readPixelProperty(body, "right") != null
+                    || readPixelProperty(body, "top") != null
+                    || readPixelProperty(body, "bottom") != null) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String addInlineStyleToElement(String html, String id, String style, boolean onlyWhenNoInlineStyle) {
+        ElementBlock element = findElementById(html, id, 0);
+        if (element == null) {
+            return html;
+        }
+
+        String openTag = html.substring(element.start(), element.openEnd());
+        if (onlyWhenNoInlineStyle && hasStyleAttribute(openTag)) {
+            return html;
+        }
+
+        String fixedOpenTag = appendInlineStyle(openTag, style);
+        return html.substring(0, element.start())
+                + fixedOpenTag
+                + html.substring(element.openEnd());
+    }
+
+    private String appendInlineStyle(String openTag, String style) {
+        Pattern stylePattern = Pattern.compile("(?is)\\bstyle\\s*=\\s*([\"'])(.*?)\\1");
+        java.util.regex.Matcher matcher = stylePattern.matcher(openTag);
+        if (matcher.find()) {
+            String mergedStyle = removePropertiesPresentIn(matcher.group(2).stripTrailing(), style);
+            if (!mergedStyle.endsWith(";")) {
+                mergedStyle += ";";
+            }
+            mergedStyle += " " + style;
+            return matcher.replaceFirst("style=" + matcher.group(1)
+                    + java.util.regex.Matcher.quoteReplacement(mergedStyle)
+                    + matcher.group(1));
+        }
+        int insertAt = openTag.endsWith("/>") ? openTag.length() - 2 : openTag.length() - 1;
+        return openTag.substring(0, insertAt)
+                + " style=\"" + attr(style) + "\""
+                + openTag.substring(insertAt);
+    }
+
+    private String removePropertiesPresentIn(String currentStyle, String nextStyle) {
+        String updated = currentStyle;
+        String[] properties = {
+                "position",
+                "left",
+                "top",
+                "right",
+                "bottom",
+                "width",
+                "height",
+                "min-height",
+                "max-height",
+                "overflow",
+                "z-index",
+                "display",
+                "align-items",
+                "padding",
+                "border-radius"
+        };
+        String next = nextStyle.toLowerCase();
+        for (String property : properties) {
+            if (next.contains(property.toLowerCase() + ":")) {
+                updated = removeProperty(updated, property);
+            }
+        }
+        return updated.strip();
+    }
+
+    private boolean hasStyleAttribute(String openTag) {
+        return Pattern.compile("(?is)\\bstyle\\s*=").matcher(openTag).find();
+    }
+
+    private boolean isInsideClassBlock(String html, ElementBlock child, String className) {
+        Pattern pattern = Pattern.compile("(?is)<([a-zA-Z0-9]+)(?=[^>]*\\bclass\\s*=\\s*([\"'])(?:(?!\\2).)*\\b"
+                + Pattern.quote(className)
+                + "\\b(?:(?!\\2).)*\\2)[^>]*>");
+        java.util.regex.Matcher matcher = pattern.matcher(html);
+        while (matcher.find()) {
+            String openTag = matcher.group();
+            if (!hasClass(openTag, className)) {
+                continue;
+            }
+            int closeEnd = findMatchingCloseTag(html, matcher.group(1).toLowerCase(), matcher.end());
+            if (closeEnd < 0) {
+                continue;
+            }
+            if (matcher.start() < child.start() && child.end() <= closeEnd) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasClass(String openTag, String className) {
+        Pattern classPattern = Pattern.compile("(?is)\\bclass\\s*=\\s*([\"'])(.*?)\\1");
+        java.util.regex.Matcher matcher = classPattern.matcher(openTag);
+        if (!matcher.find()) {
+            return false;
+        }
+        String[] classes = matcher.group(2).trim().split("\\s+");
+        for (String classValue : classes) {
+            if (className.equals(classValue)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<ElementBlock> findElementsOutsideCardRoot(String html, String id, ElementBlock cardRoot) {
+        List<ElementBlock> elements = new ArrayList<>();
+        int cursor = 0;
+        while (cursor < html.length()) {
+            ElementBlock element = findElementById(html, id, cursor);
+            if (element == null) {
+                break;
+            }
+            if (element.start() < cardRoot.openEnd() || element.end() > cardRoot.closeStart()) {
+                elements.add(element);
+            }
+            cursor = Math.max(element.end(), cursor + 1);
+        }
+        return elements;
+    }
+
+    private ElementBlock findElementById(String html, String id, int fromIndex) {
+        Pattern pattern = Pattern.compile("(?is)<([a-zA-Z0-9]+)(?=[^>]*\\bid=[\"']"
+                + Pattern.quote(id) + "[\"'])[^>]*>");
+        java.util.regex.Matcher matcher = pattern.matcher(html);
+        if (!matcher.find(fromIndex)) {
+            return null;
+        }
+
+        String tag = matcher.group(1).toLowerCase();
+        int openStart = matcher.start();
+        int openEnd = matcher.end();
+        String openTag = html.substring(openStart, openEnd);
+        if (isVoidElement(tag) || openTag.stripTrailing().endsWith("/>")) {
+            return new ElementBlock(openStart, openEnd, openEnd, openEnd, html.substring(openStart, openEnd));
+        }
+
+        int closeEnd = findMatchingCloseTag(html, tag, openEnd);
+        if (closeEnd < 0) {
+            return null;
+        }
+
+        int closeStart = html.toLowerCase().lastIndexOf("</" + tag + ">", closeEnd);
+        if (closeStart < openEnd) {
+            return null;
+        }
+        return new ElementBlock(openStart, openEnd, closeStart, closeEnd, html.substring(openStart, closeEnd));
+    }
+
+    private boolean isVoidElement(String tag) {
+        return switch (tag) {
+            case "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr" -> true;
+            default -> false;
+        };
+    }
+
     private String replaceElementText(String html, String id, String value) {
         String idPattern = Pattern.quote(id);
         Pattern pattern = Pattern.compile("(?is)<([a-zA-Z0-9]+)(?=[^>]*\\bid=[\"']" + idPattern + "[\"'])[^>]*>");
@@ -210,7 +679,14 @@ public class HtmlExportService {
             int openEnd = matcher.end();
             int closeEnd = findMatchingCloseTag(html, tag, openEnd);
             if (closeEnd < 0) {
-                cursor = openEnd;
+                int nextTag = html.indexOf('<', openEnd);
+                if (nextTag < 0) {
+                    nextTag = html.length();
+                }
+                updated.append(html, cursor, openEnd);
+                updated.append(value);
+                updated.append("</").append(tag).append(">");
+                cursor = nextTag;
                 continue;
             }
 
@@ -271,14 +747,76 @@ public class HtmlExportService {
                 || lower.contains("#linkarea:after");
     }
 
+    private String repairMalformedClosingTags(String html) {
+        return (html == null ? "" : html).replaceAll("(?i)(?<!<)/div>", "</div>");
+    }
+
+    private boolean needsExportRepair(String html) {
+        String value = html == null ? "" : html;
+        if (Pattern.compile("(?i)(?<!<)/div>").matcher(value).find()) {
+            return true;
+        }
+        if (hasElementWithClassWithoutInlineStyle(value, "profileImage", "card-profile-wrap")) {
+            return true;
+        }
+
+        ElementBlock company = findElementById(value, "companyText", 0);
+        if (company != null && !isInsideClassBlock(value, company, "card-meta")
+                && hasElementWithClassWithoutInlineStyle(value, "companyText", "card-meta-item")) {
+            return true;
+        }
+
+        ElementBlock department = findElementById(value, "departmentText", 0);
+        if (department != null && !isInsideClassBlock(value, department, "card-meta")
+                && hasElementWithClassWithoutInlineStyle(value, "departmentText", "card-meta-item")) {
+            return true;
+        }
+
+        ElementBlock phone = findElementById(value, "phoneText", 0);
+        if (phone != null && !isInsideClassBlock(value, phone, "card-contactGroup")
+                && hasElementWithClassWithoutInlineStyle(value, "phoneText", "card-contact")) {
+            return true;
+        }
+
+        ElementBlock email = findElementById(value, "emailText", 0);
+        if (email != null && !isInsideClassBlock(value, email, "card-contactGroup")
+                && hasElementWithClassWithoutInlineStyle(value, "emailText", "card-contact")) {
+            return true;
+        }
+
+        return hasFallbackStyle(value, "companyText", "top:386px")
+                && (hasFallbackStyle(value, "phoneText", "top:344px")
+                || hasFallbackStyle(value, "emailText", "top:396px"));
+    }
+
+    private boolean hasElementWithClassWithoutInlineStyle(String html, String id, String className) {
+        ElementBlock element = findElementById(html, id, 0);
+        if (element == null) {
+            return false;
+        }
+
+        String openTag = html.substring(element.start(), element.openEnd());
+        return hasClass(openTag, className) && !hasStyleAttribute(openTag);
+    }
+
+    private boolean hasFallbackStyle(String html, String id, String styleFragment) {
+        ElementBlock element = findElementById(html, id, 0);
+        if (element == null) {
+            return false;
+        }
+
+        String openTag = html.substring(element.start(), element.openEnd()).replace(" ", "").toLowerCase();
+        return openTag.contains(styleFragment.replace(" ", "").toLowerCase());
+    }
+
     private String keepExtraAreaInlineStylesInsideCard(String html) {
         String updated = html == null ? "" : html;
-        updated = keepInlineAreaInsideCard(updated, "portfolioArea", EXTRA_AREA_WIDTH);
-        updated = keepInlineAreaInsideCard(updated, "linkArea", Math.min(EXTRA_AREA_WIDTH, 360));
+        updated = keepInlineAreaInsideCard(updated, "portfolioArea", EXTRA_AREA_WIDTH, EXTRA_AREA_HEIGHT);
+        updated = keepInlineAreaInsideCard(updated, "linkArea", Math.min(EXTRA_AREA_WIDTH, 360), LINK_AREA_HEIGHT);
         return updated;
     }
 
-    private String keepInlineAreaInsideCard(String html, String id, int fallbackWidth) {
+    private String keepInlineAreaInsideCard(String html, String id, int fallbackWidth, int fallbackHeight) {
         Pattern tagPattern = Pattern.compile("(?is)<([a-zA-Z0-9]+)(?=[^>]*\\bid=[\"']"
                 + Pattern.quote(id) + "[\"'])[^>]*>");
         java.util.regex.Matcher matcher = tagPattern.matcher(html);
@@ -286,14 +824,14 @@ public class HtmlExportService {
 
         while (matcher.find()) {
             String tag = matcher.group();
-            String fixedTag = fixInlineStyleOnTag(tag, fallbackWidth);
+            String fixedTag = fixInlineStyleOnTag(tag, fallbackWidth, fallbackHeight);
             matcher.appendReplacement(updated, java.util.regex.Matcher.quoteReplacement(fixedTag));
         }
         matcher.appendTail(updated);
         return updated.toString();
     }
 
-    private String fixInlineStyleOnTag(String tag, int fallbackWidth) {
+    private String fixInlineStyleOnTag(String tag, int fallbackWidth, int fallbackHeight) {
         Pattern stylePattern = Pattern.compile("(?is)\\bstyle\\s*=\\s*([\"'])(.*?)\\1");
         java.util.regex.Matcher styleMatcher = stylePattern.matcher(tag);
         if (!styleMatcher.find()) {
@@ -301,7 +839,7 @@ public class HtmlExportService {
         }
 
         String style = styleMatcher.group(2);
-        String fixedStyle = keepAreaStyleInsideCard(style, fallbackWidth);
+        String fixedStyle = keepAreaStyleInsideCard(style, fallbackWidth, fallbackHeight);
         return styleMatcher.replaceFirst("style=" + styleMatcher.group(1)
                 + java.util.regex.Matcher.quoteReplacement(fixedStyle)
                 + styleMatcher.group(1));
@@ -309,22 +847,22 @@ public class HtmlExportService {
 
     private String keepExtraAreasInsideCard(String css) {
         String updated = css == null ? "" : css;
-        updated = keepAreaInsideCard(updated, "portfolioArea", EXTRA_AREA_WIDTH);
-        updated = keepAreaInsideCard(updated, "linkArea", Math.min(EXTRA_AREA_WIDTH, 360));
-        updated = keepAreaClassInsideCard(updated, "card-portfolio", EXTRA_AREA_WIDTH);
-        updated = keepAreaClassInsideCard(updated, "card-links", Math.min(EXTRA_AREA_WIDTH, 360));
+        updated = keepAreaInsideCard(updated, "portfolioArea", EXTRA_AREA_WIDTH, EXTRA_AREA_HEIGHT);
+        updated = keepAreaInsideCard(updated, "linkArea", Math.min(EXTRA_AREA_WIDTH, 360), LINK_AREA_HEIGHT);
+        updated = keepAreaClassInsideCard(updated, "card-portfolio", EXTRA_AREA_WIDTH, EXTRA_AREA_HEIGHT);
+        updated = keepAreaClassInsideCard(updated, "card-links", Math.min(EXTRA_AREA_WIDTH, 360), LINK_AREA_HEIGHT);
         return updated;
     }
 
-    private String keepAreaInsideCard(String css, String id, int fallbackWidth) {
-        return keepAreaRuleInsideCard(css, "#[a-zA-Z0-9_-]*" + Pattern.quote(id), fallbackWidth);
+    private String keepAreaInsideCard(String css, String id, int fallbackWidth, int fallbackHeight) {
+        return keepAreaRuleInsideCard(css, "#[a-zA-Z0-9_-]*" + Pattern.quote(id), fallbackWidth, fallbackHeight);
     }
 
-    private String keepAreaClassInsideCard(String css, String className, int fallbackWidth) {
-        return keepAreaRuleInsideCard(css, "\\.[a-zA-Z0-9_-]*" + Pattern.quote(className), fallbackWidth);
+    private String keepAreaClassInsideCard(String css, String className, int fallbackWidth, int fallbackHeight) {
+        return keepAreaRuleInsideCard(css, "\\.[a-zA-Z0-9_-]*" + Pattern.quote(className), fallbackWidth, fallbackHeight);
     }
 
-    private String keepAreaRuleInsideCard(String css, String selectorPattern, int fallbackWidth) {
+    private String keepAreaRuleInsideCard(String css, String selectorPattern, int fallbackWidth, int fallbackHeight) {
         Pattern rulePattern = Pattern.compile("(?is)(" + selectorPattern + "[^{]*\\{)(.*?)(\\})");
         java.util.regex.Matcher matcher = rulePattern.matcher(css);
         StringBuilder updated = new StringBuilder();
@@ -334,33 +872,53 @@ public class HtmlExportService {
             Integer left = readPixelProperty(body, "left");
             Integer right = readPixelProperty(body, "right");
             Integer width = readPixelProperty(body, "width");
-            if (left == null && right == null) {
+            Integer top = readPixelProperty(body, "top");
+            Integer bottom = readPixelProperty(body, "bottom");
+            Integer height = readPixelProperty(body, "height");
+            if (left == null && right == null && top == null && bottom == null) {
                 matcher.appendReplacement(updated, java.util.regex.Matcher.quoteReplacement(matcher.group()));
                 continue;
             }
 
-            String fixedBody = keepAreaStyleInsideCard(body, fallbackWidth, left, right, width);
+            String fixedBody = keepAreaStyleInsideCard(body, fallbackWidth, fallbackHeight, left, right, width, top, bottom, height);
             matcher.appendReplacement(updated, java.util.regex.Matcher.quoteReplacement(matcher.group(1) + fixedBody + matcher.group(3)));
         }
         matcher.appendTail(updated);
         return updated.toString();
     }
 
-    private String keepAreaStyleInsideCard(String style, int fallbackWidth) {
+    private String keepAreaStyleInsideCard(String style, int fallbackWidth, int fallbackHeight) {
         Integer left = readPixelProperty(style, "left");
         Integer right = readPixelProperty(style, "right");
         Integer width = readPixelProperty(style, "width");
-        if (left == null && right == null) {
+        Integer top = readPixelProperty(style, "top");
+        Integer bottom = readPixelProperty(style, "bottom");
+        Integer height = readPixelProperty(style, "height");
+        if (left == null && right == null && top == null && bottom == null) {
             return style;
         }
-        return keepAreaStyleInsideCard(style, fallbackWidth, left, right, width);
+        return keepAreaStyleInsideCard(style, fallbackWidth, fallbackHeight, left, right, width, top, bottom, height);
     }
 
-    private String keepAreaStyleInsideCard(String style, int fallbackWidth, Integer left, Integer right, Integer width) {
+    private String keepAreaStyleInsideCard(
+            String style,
+            int fallbackWidth,
+            int fallbackHeight,
+            Integer left,
+            Integer right,
+            Integer width,
+            Integer top,
+            Integer bottom,
+            Integer height
+    ) {
         int actualWidth = width == null ? fallbackWidth : Math.min(width, fallbackWidth);
+        int actualHeight = height == null ? fallbackHeight : Math.min(height, fallbackHeight);
         String fixedStyle = style;
         if (width == null || width > fallbackWidth) {
             fixedStyle = writePixelProperty(fixedStyle, "width", fallbackWidth);
+        }
+        if (height == null || height > fallbackHeight) {
+            fixedStyle = writePixelProperty(fixedStyle, "height", fallbackHeight);
         }
         if (left != null) {
             int maxLeft = CARD_WIDTH - SAFE_MARGIN - actualWidth;
@@ -371,6 +929,16 @@ public class HtmlExportService {
             }
         } else if (right != null && right < SAFE_MARGIN) {
             fixedStyle = writePixelProperty(fixedStyle, "right", SAFE_MARGIN);
+        }
+        if (top != null) {
+            int maxTop = CARD_HEIGHT - SAFE_MARGIN - actualHeight;
+            int safeTop = Math.max(SAFE_MARGIN, Math.min(top, maxTop));
+            if (safeTop != top) {
+                fixedStyle = writePixelProperty(fixedStyle, "top", safeTop);
+                fixedStyle = removeProperty(fixedStyle, "bottom");
+            }
+        } else if (bottom != null && bottom < SAFE_MARGIN) {
+            fixedStyle = writePixelProperty(fixedStyle, "bottom", SAFE_MARGIN);
         }
         return fixedStyle;
     }
@@ -909,5 +1477,11 @@ public class HtmlExportService {
 
     private String text(String value) {
         return value == null ? "" : value;
+    }
+
+    private record ElementBlock(int start, int openEnd, int closeStart, int end, String html) {
+    }
+
+    private record LayoutBox(int x, int y, int width, int height) {
     }
 }

@@ -12,6 +12,8 @@
         profileImage: "프로필 사진",
         nameText: "이름",
         jobText: "직무 / 직책",
+        companyText: "회사 / 소속",
+        departmentText: "부서 / 전공",
         introText: "자기소개",
         emailText: "이메일",
         phoneText: "전화번호",
@@ -26,6 +28,8 @@
     const personalRoleFields = [
         { role: "nameText", label: "이름", selector: "[name='displayName']" },
         { role: "jobText", label: "직무 / 직책", selector: "[name='jobTitle']" },
+        { role: "companyText", label: "회사 / 소속", selector: "[name='company']" },
+        { role: "departmentText", label: "부서 / 전공", selector: "[name='department']" },
         { role: "introText", label: "자기소개", selector: "[name='intro']" },
         { role: "emailText", label: "이메일", selector: "[name='email']" },
         { role: "phoneText", label: "전화번호", selector: "[name='phone']" }
@@ -611,6 +615,8 @@
         if (text.includes("프로필") || text.includes("사진") || text.includes("profile")) return "profileImage";
         if (text.includes("이름") || text.includes("name")) return "nameText";
         if (text.includes("직무") || text.includes("직책") || text.includes("job")) return "jobText";
+        if (text.includes("회사") || text.includes("소속") || text.includes("company")) return "companyText";
+        if (text.includes("부서") || text.includes("전공") || text.includes("department") || text.includes("major")) return "departmentText";
         if (text.includes("소개") || text.includes("intro")) return "introText";
         if (text.includes("메일") || text.includes("email")) return "emailText";
         if (text.includes("전화") || text.includes("phone")) return "phoneText";

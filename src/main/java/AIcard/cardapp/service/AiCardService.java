@@ -194,7 +194,7 @@ public class AiCardService {
 
         CardLayout layout = new CardLayout();
         layout.setCardId(card.getCardId());
-        layout.setLayoutJson(aiResponse.getLayoutJson());
+        layout.setLayoutJson(defaultValue(cardRequest.getDrawingLayoutJson(), aiResponse.getLayoutJson()));
         cardLayoutRepository.save(layout);
 
         htmlExportService.exportCard(card.getCardId());
@@ -246,8 +246,9 @@ public class AiCardService {
 
         CardLayout layout = cardLayoutRepository.findByCardId(cardId)
                 .orElseGet(CardLayout::new);
+        String preservedLayoutJson = layout.getLayoutJson();
         layout.setCardId(cardId);
-        layout.setLayoutJson(fixed.getLayoutJson());
+        layout.setLayoutJson(isUserDrawingLayout(preservedLayoutJson) ? preservedLayoutJson : fixed.getLayoutJson());
         cardLayoutRepository.save(layout);
 
         htmlExportService.exportCard(cardId);
@@ -490,6 +491,23 @@ public class AiCardService {
             return trimToNull(root.path("templateCode").asText());
         } catch (Exception ignored) {
             return null;
+        }
+    }
+
+    private boolean isUserDrawingLayout(String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return false;
+        }
+
+        try {
+            JsonNode root = objectMapper.readTree(layoutJson);
+            JsonNode elements = root.path("elements");
+            return root.has("canvasWidth")
+                    && root.has("canvasHeight")
+                    && elements.isArray()
+                    && elements.size() > 0;
+        } catch (Exception ignored) {
+            return false;
         }
     }
 
