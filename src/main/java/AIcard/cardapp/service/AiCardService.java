@@ -621,6 +621,8 @@ public class AiCardService {
 
     public List<BusinessCard> getCardsByUserId(Long userId) {
         return businessCardRepository.findByUserId(userId);
+    }
+    
     private String displayCardTitle(BusinessCard card) {
         if (card.getTitle() != null && !card.getTitle().isBlank()) {
             return card.getTitle();
