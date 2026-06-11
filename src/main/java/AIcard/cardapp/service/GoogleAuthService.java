@@ -67,7 +67,7 @@ public class GoogleAuthService {
                 clientId,
                 clientSecret,
                 code,
-                "http://localhost:8080/card/oauth/callback"
+                "http://wooserver76.iptime.org/card/oauth/callback"
         ).execute();
 
         LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(response.getExpiresInSeconds());

@@ -46,7 +46,7 @@ public class GoogleContactService {
         contactDto.setEmail(card.getEmail());
         contactDto.setOrganization(card.getCompany());
         contactDto.setJobTitle(card.getJobTitle());
-        contactDto.setNotes("명함 URL: http://localhost:8080/card/public/card/" + card.getPublicUrl());
+        contactDto.setNotes("명함 URL: http://wooserver76.iptime.org/card/public/card/" + card.getPublicUrl());
 
         saveContactByUserId(userId, contactDto);
     }

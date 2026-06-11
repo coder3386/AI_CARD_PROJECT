@@ -50,7 +50,7 @@ public class GoogleAnalyticsController {
     @GetMapping("/oauth/start")
     public String startOAuth() {
         String clientId = "893320613116-b1d36l01tvd7gqqt3dkaj22qapb45aua.apps.googleusercontent.com";
-        String redirectUri = "http://localhost:8080/card/oauth/callback";
+        String redirectUri = "http://wooserver76.iptime.org/card/oauth/callback";
         String scopes = "https://www.googleapis.com/auth/analytics.readonly%20https://www.googleapis.com/auth/contacts";
 
         return "redirect:https://accounts.google.com/o/oauth2/v2/auth"

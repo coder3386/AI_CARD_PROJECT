@@ -98,7 +98,7 @@ public class SecurityConfig {
                                         "style-src 'self' 'unsafe-inline'; " +
                                         "img-src 'self' data:; " +
                                         "script-src 'self' https://www.googletagmanager.com https://cdn.jsdelivr.net https://unpkg.com 'unsafe-inline'; " +
-                                        "connect-src 'self' http://localhost:8080 https://unpkg.com https://www.google-analytics.com;")
+                                        "connect-src 'self' http://wooserver76.iptime.org https://unpkg.com https://www.google-analytics.com;")
                         )
                 );
 
