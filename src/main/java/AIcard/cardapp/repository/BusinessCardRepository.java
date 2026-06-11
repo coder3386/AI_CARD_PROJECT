@@ -38,4 +38,6 @@ public interface BusinessCardRepository extends JpaRepository<BusinessCard, Long
             order by c.createdAt desc
             """)
     List<ManagerCardDTO> findManagerCardSummaries();
+
+    List<BusinessCard> findByUserId(Long userId);
 }

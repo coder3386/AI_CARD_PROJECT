@@ -4,14 +4,6 @@
     <title>정보 수정</title>
     <link rel="stylesheet" th:href="@{/css/main_style.css}">
     <link rel="stylesheet" th:href="@{/css/loginjoin.css}">
-    <style>
-        /* 이전에 드린 따뜻한 색감의 스타일을 그대로 사용하거나 추가하세요 */
-        .info-text {
-            font-size: 14px;
-            color: #7A5C43;
-            margin-bottom: 5px;
-        }
-    </style>
 </head>
 <body>
 <div class="auth-wrapper">
@@ -46,13 +38,47 @@
                 <input type="text" name="phone" th:value="${member.phone}" placeholder="010-0000-0000">
             </div>
 
+            <div class="form-group" style="margin-top: 40px; border-top: 1px solid #ddd; padding-top: 25px;">
+                <label style="font-weight: bold; font-size: 16px; display: block; margin-bottom: 15px;">구글 서비스 계정 연동 (주소록)</label>
+
+                <div id="ga-status-area">
+                    <p th:if="${isGoogleLinked}" style="color: #10b981; font-weight: bold; font-size: 15px; margin: 10px 0;">
+                        ✅ 구글 계정 연동이 완료되었습니다.
+                    </p>
+
+                    <div th:unless="${isGoogleLinked}" style="margin-top: 5px;">
+                        <a th:href="@{/oauth/start}" class="btn-primary auth-btn" style="background-color: #4285F4; color: white; display: inline-flex; align-items: center; justify-content: center; padding: 12px 20px; border-radius: 6px; text-decoration: none; font-weight: bold; font-size: 14px; min-height: 42px;">
+                            Google 계정 연동하기
+                        </a>
+                    </div>
+                </div>
+            </div>
+
             <button type="submit" class="btn-primary auth-btn">수정 완료</button>
-            <a th:href="@{/main}" class="back-link"
-               style="display: block; text-align: center; margin-top: 15px; color: #7A5C43;">취소</a>
+
+            <a th:href="@{/main}" class="back-link" style="display: block; text-align: center;
+             margin-top: 15px; color: #7A5C43; text-decoration: none;">
+                취소
+            </a>
         </form>
     </div>
 </div>
 
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const targetPath = /*[[@{/edit}]]*/ "/card/edit";
+
+    if (urlParams.get('linked') === 'success') {
+        alert("구글 애널리틱스 계정이 성공적으로 연동되었습니다! ✅");
+        // 파라미터만 떼어내고 원래 주소로 복귀
+        window.history.replaceState({}, document.title, targetPath);
+    }
+    else if (urlParams.get('linked') === 'error') {
+        alert("연동 과정에서 문제가 발생했습니다. 다시 시도해 주세요. ⚠️");
+        window.history.replaceState({}, document.title, targetPath);
+    }
+</script>
 <script th:src="@{/js/UserInfoEdit.js}"></script>
 </body>
 </html>

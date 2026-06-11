@@ -12,6 +12,7 @@ import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import lombok.Getter;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -19,12 +20,16 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "business_cards")
+@Getter
 public class BusinessCard {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "card_id")
     private Long cardId;
+
+    @OneToOne(fetch = FetchType.LAZY, mappedBy = "businessCard")
+    private GoogleAnalyticsSettings gaSettings;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;

@@ -55,8 +55,9 @@ public class SecurityConfig {
                         .requestMatchers("/", "/main", "/viewDemo").permitAll() // 누구나 접근 가능
                         .requestMatchers("/terms", "/privacypolicy").permitAll()
                         .requestMatchers("/manager/**").hasAnyRole("MANAGER", "ADMIN")
-                        .requestMatchers("/card/join", "/card/login", "/api/notices/**").permitAll()
+                        .requestMatchers("/card/join", "/card/login", "/api/notices/**", "/api/contacts/**", "/card/api/**", "/api/**").permitAll()
                         .requestMatchers("/card/edit").authenticated()
+                        .requestMatchers("/oauth/start", "/oauth/callback").permitAll()
                         //.requestMatchers("manager/").hasRole("MANAGER")
                         .anyRequest().permitAll() // 그 외 모든 요청은 로그인해야함
 
@@ -77,11 +78,28 @@ public class SecurityConfig {
                         .sessionRegistry(sessionRegistry()) // 세션 레지스트리 등록
                 )
 
+                .sessionManagement(session -> {
+                    session.maximumSessions(-1)
+                            .sessionRegistry(sessionRegistry());
+                    // 세션 고정 보호 정책 설정 (구글 연동 시 세션 풀림 방지)
+                    session.sessionFixation(sessionFixation -> sessionFixation.none());
+                })
+
                 // D. 로그아웃 설정
                 .logout(logout -> logout
                         .logoutUrl("/card/logout")
                         .logoutSuccessUrl("/main")
                         .invalidateHttpSession(true)
+                )
+
+                .headers(headers -> headers
+                        .contentSecurityPolicy(csp -> csp
+                                .policyDirectives("default-src 'self'; " +
+                                        "style-src 'self' 'unsafe-inline'; " +
+                                        "img-src 'self' data:; " +
+                                        "script-src 'self' https://www.googletagmanager.com https://cdn.jsdelivr.net https://unpkg.com 'unsafe-inline'; " +
+                                        "connect-src 'self' http://localhost:8080 https://unpkg.com https://www.google-analytics.com;")
+                        )
                 );
 
         return http.build();

@@ -4,9 +4,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
-@Data                // Getter, Setter 등을 자동으로 만들어줍니다.
-@NoArgsConstructor   // 기본 생성자
-@AllArgsConstructor  // 모든 필드를 포함한 생성자
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class GoogleContactDTO {
 
     private String name;          // 이름 (성+이름)
@@ -14,5 +14,5 @@ public class GoogleContactDTO {
     private String email;         // 이메일
     private String jobTitle;      // 직함 (예: 팀장, 개발자)
     private String organization;  // 회사명/소속
-    private String notes;         // 메모 (AI 명함에서 추출한 특징 등)
+    private String notes;         // 메모 (명함 URL)
 }
