@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +27,7 @@ public class GoogleAnalyticsService {
     @Value("${google.analytics.key-path}")
     private Resource keyFile;
 
-    public GoogleAnalyticsDTO.Response getCardViewStatistics(Long cardId) {
+    public GoogleAnalyticsDTO.Response getCardViewStatistics(Long cardId, String rangeType) {
 
         List<GoogleAnalyticsDTO.DailyViewCount> statList = new ArrayList<>();
 
@@ -46,12 +48,33 @@ public class GoogleAnalyticsService {
                         .setCredentialsProvider(() -> credentials)
                         .build();
 
+                String startDate;
+                String dimensionName;
+
+                switch (rangeType) {
+                    case "7days":
+                        startDate = "7daysAgo";
+                        dimensionName = "date";
+                        break;
+
+                    case "1year":
+                        startDate = "365daysAgo";
+                        dimensionName = "month";
+                        break;
+
+                    case "30days":
+                    default:
+                        startDate = "30daysAgo";
+                        dimensionName = "date";
+                        break;
+                }
+
                 try (BetaAnalyticsDataClient analyticsData = BetaAnalyticsDataClient.create(settings)) {
 
                     RunReportRequest request = RunReportRequest.newBuilder()
                             .setProperty("properties/" + PROPERTY_ID)
-                            .addDateRanges(DateRange.newBuilder().setStartDate("30daysAgo").setEndDate("today"))
-                            .addDimensions(Dimension.newBuilder().setName("date")) // 👈 날짜별 조회를 위해 수정!
+                            .addDateRanges(DateRange.newBuilder().setStartDate(startDate).setEndDate("today"))
+                            .addDimensions(Dimension.newBuilder().setName(dimensionName))
                             .addMetrics(Metric.newBuilder().setName("screenPageViews"))
                             .setDimensionFilter(FilterExpression.newBuilder()
                                     .setFilter(Filter.newBuilder()
@@ -64,10 +87,10 @@ public class GoogleAnalyticsService {
                     RunReportResponse response = analyticsData.runReport(request);
 
                     for (Row row : response.getRowsList()) {
-                        String date = row.getDimensionValues(0).getValue(); // 날짜 (예: 20260610)
-                        long views = Long.parseLong(row.getMetricValues(0).getValue()); // 해당 날짜의 조회수
+                        String period = row.getDimensionValues(0).getValue();
+                        long views = Long.parseLong(row.getMetricValues(0).getValue());// 해당 날짜의 조회수
 
-                        statList.add(new GoogleAnalyticsDTO.DailyViewCount(date, views));
+                        statList.add(new GoogleAnalyticsDTO.DailyViewCount (period, views));
                     }
                 }
             }

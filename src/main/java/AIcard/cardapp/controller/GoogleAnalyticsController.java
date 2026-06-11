@@ -33,12 +33,13 @@ public class GoogleAnalyticsController {
     @GetMapping("/api/google-analytics/stats")
     @ResponseBody
     public ResponseEntity<GoogleAnalyticsDTO.Response> getChartStats(@RequestParam Long cardId,
-                                                                     org.springframework.security.core.Authentication authentication) {
+                                                                     @RequestParam(defaultValue = "30days") String rangeType,
+                                                                     Authentication authentication) {
 
         org.slf4j.Logger userLogger = org.slf4j.LoggerFactory.getLogger("USER_LOGGER");
         String currentLoginId = (authentication != null) ? authentication.getName() : "ANONYMOUS";
 
-        GoogleAnalyticsDTO.Response stats = googleAnalyticsService.getCardViewStatistics(cardId);
+        GoogleAnalyticsDTO.Response stats = googleAnalyticsService.getCardViewStatistics(cardId, rangeType);
 
         userLogger.info("[USER-ACTION] 유저 '{}'이 명함 ID '{}'의 통계 차트 데이터를 조회함.", currentLoginId, cardId);
 

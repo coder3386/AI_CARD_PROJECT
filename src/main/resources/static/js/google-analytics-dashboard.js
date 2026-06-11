@@ -4,7 +4,7 @@
  */
 document.addEventListener("DOMContentLoaded", function() {
     const cardId = currentCardId; // HTML(Thymeleaf)에서 정의된 변수 획득
-    const rangeFilter = document.getElementById('rangeTypeFilter');
+    const rangeFilter = document.getElementById('rangeTypeFilter').value;
     const ctx = document.getElementById('analyticsChartCanvas').getContext('2d');
 
     let currentChart = null; // 중복 생성 방지용 차트 인스턴스 보관 변수
@@ -12,7 +12,8 @@ document.addEventListener("DOMContentLoaded", function() {
     // 1. 차트 데이터를 백엔드로부터 가져와서 차트를 그리는 함수
     function fetchAndRenderChart(rangeType) {
         // 백엔드 컨트롤러 매핑 주소 호출 (/card는 Context Path가 있을 시 브라우저가 자동 감지)
-        fetch(`/card/api/google-analytics/stats?cardId=${cardId}&rangeType=${rangeType}`)            .then(response => {
+        fetch(`/card/api/google-analytics/stats?cardId=${currentCardId}&rangeType=${rangeType}`)
+            .then(response => {
                 if (!response.ok) {
                     throw new Error("통계 데이터를 가져오는 데 실패했습니다.");
                 }
