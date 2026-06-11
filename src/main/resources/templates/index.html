@@ -53,6 +53,7 @@
                     <hr class="dropdown-divider">
 
                     <a th:href="@{/card/edit}" class="dropdown-item">계정 관리</a>
+                    <a th:href="@{/cards/my}" class="dropdown-item">내 명함 보기</a>
                     <a th:href="@{/manager}" class="dropdown-item" sec:authorize="hasAnyRole('MANAGER', 'ADMIN')">매니저 페이지</a>
 
                     <hr class="dropdown-divider">

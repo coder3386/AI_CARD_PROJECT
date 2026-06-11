@@ -82,20 +82,30 @@ public class HtmlExportService {
         String layoutJson = cardLayoutRepository.findByCardId(cardId)
                 .map(CardLayout::getLayoutJson)
                 .orElse("");
+        boolean userDrawingLayout = isUserDrawingLayoutJson(layoutJson);
+        String templateCode = extractTemplateCode(layoutJson);
 
-        String htmlFragment = removeStandaloneExtraItems(aiResult.getGeneratedHtml(), card.getCardId());
-        htmlFragment = removeAiGeneratedExtraPanels(htmlFragment, card.getCardId());
-        htmlFragment = repairMalformedClosingTags(htmlFragment);
-        htmlFragment = keepRequiredElementsInsideCardRoot(htmlFragment);
-        htmlFragment = ensureRequiredElementsExist(htmlFragment, card);
-        htmlFragment = applyBusinessText(htmlFragment, card);
-        htmlFragment = keepExtraAreaInlineStylesInsideCard(htmlFragment);
-        String css = removeAiGeneratedExtraPseudoContent(aiResult.getGeneratedCss());
-        css = keepExtraAreasInsideCard(css);
+        String htmlFragment;
+        String css;
+        if (userDrawingLayout) {
+            htmlFragment = removeStandaloneExtraItems(aiResult.getGeneratedHtml(), card.getCardId());
+            htmlFragment = removeAiGeneratedExtraPanels(htmlFragment, card.getCardId());
+            htmlFragment = repairMalformedClosingTags(htmlFragment);
+            htmlFragment = keepRequiredElementsInsideCardRoot(htmlFragment);
+            htmlFragment = ensureRequiredElementsExist(htmlFragment, card);
+            htmlFragment = applyBusinessText(htmlFragment, card);
+            htmlFragment = keepExtraAreaInlineStylesInsideCard(htmlFragment);
+            css = removeAiGeneratedExtraPseudoContent(aiResult.getGeneratedCss());
+            css = keepExtraAreasInsideCard(css);
+        } else {
+            htmlFragment = buildStableTextCardHtml(templateCode);
+            htmlFragment = applyBusinessText(htmlFragment, card);
+            css = buildStableTextCardCss(templateCode, layoutJson);
+        }
         htmlFragment = applyExtraItems(htmlFragment, card.getCardId());
         htmlFragment = keepRequiredElementsInsideCardRoot(htmlFragment);
         htmlFragment = applyLayoutJsonStyles(htmlFragment, layoutJson);
-        htmlFragment = applyRequiredElementLayoutFallbacks(htmlFragment, css);
+        htmlFragment = applyRequiredElementLayoutFallbacks(htmlFragment, css, userDrawingLayout);
         String fullHtml = wrapFullHtml(htmlFragment, css);
 
         Path cardDirectory = Path.of(generatedCardDir, "card_" + cardId);
@@ -141,8 +151,14 @@ public class HtmlExportService {
             return "";
         }
         String exported = readExportedDocument(card.get());
+        String layoutJson = cardLayoutRepository.findByCardId(card.get().getCardId())
+                .map(CardLayout::getLayoutJson)
+                .orElse("");
+        boolean needsStableTextExport = !isUserDrawingLayoutJson(layoutJson)
+                && (!exported.contains("card-safe-layout") || !exported.contains("card-safe-layout-v2"));
         if (!exported.isBlank() && exported.contains("ai-card-inline-style")
                 && !hasAiGeneratedExtraPseudoContent(exported)
+                && !needsStableTextExport
                 && !needsExportRepair(exported)) {
             return exported;
         }
@@ -197,6 +213,339 @@ public class HtmlExportService {
                 extraCardModal(),
                 extraCardScript()
         );
+    }
+
+    private String buildStableTextCardHtml(String templateCode) {
+        String templateClass = "card-safe-" + normalizeTemplateCode(templateCode).replace("_", "-");
+        return """
+                <div id="cardRoot" class="card-root card-safe-layout card-safe-color card-safe-layout-v2 %s">
+                  <div class="card-safe-grid">
+                    <section class="card-safe-identity" aria-label="identity">
+                      <div id="nameText" class="card-safe-name editable"></div>
+                      <div id="jobText" class="card-safe-job editable"></div>
+                      <div id="introText" class="card-safe-intro editable"></div>
+                    </section>
+                    <section class="card-safe-side" aria-label="profile and contact">
+                      <div id="profileImage" class="card-safe-profile" aria-hidden="true"></div>
+                      <div class="card-safe-meta">
+                        <div id="companyText" class="card-safe-row editable"></div>
+                        <div id="departmentText" class="card-safe-row editable"></div>
+                        <div id="emailText" class="card-safe-row editable"></div>
+                        <div id="phoneText" class="card-safe-row editable"></div>
+                      </div>
+                    </section>
+                    <div id="portfolioArea" class="card-safe-extra"></div>
+                    <div id="linkArea" class="card-safe-link"></div>
+                  </div>
+                </div>
+                """.formatted(templateClass);
+    }
+
+    private String buildStableTextCardCss(String templateCode, String layoutJson) {
+        String code = normalizeTemplateCode(templateCode);
+        String accentColor = extractCssColor(layoutJson, "pointColor");
+        String backgroundColor = extractCssColor(layoutJson, "backgroundColor");
+        String common = """
+                #cardRoot.card-safe-layout,
+                #cardRoot.card-safe-layout * {
+                  box-sizing: border-box;
+                  word-break: keep-all;
+                  overflow-wrap: anywhere;
+                }
+                #cardRoot.card-safe-layout {
+                  width: 860px;
+                  height: 480px;
+                  padding: 36px;
+                  position: relative;
+                  overflow: hidden;
+                  border-radius: 24px;
+                  font-family: Arial, 'Noto Sans KR', sans-serif;
+                }
+                #cardRoot.card-safe-layout .card-safe-grid {
+                  width: 100%;
+                  height: 100%;
+                  display: grid;
+                  grid-template-columns: minmax(0, 1fr) 360px;
+                  grid-template-rows: 202px 178px;
+                  column-gap: 32px;
+                  row-gap: 20px;
+                  position: relative;
+                  z-index: 1;
+                }
+                #cardRoot.card-safe-layout .card-safe-identity {
+                  grid-column: 1;
+                  grid-row: 1;
+                  min-width: 0;
+                  display: flex;
+                  flex-direction: column;
+                  align-items: flex-start;
+                  justify-content: flex-start;
+                }
+                #cardRoot.card-safe-layout .card-safe-name {
+                  max-width: 100%;
+                  font-size: 40px;
+                  line-height: 1.08;
+                  font-weight: 900;
+                  letter-spacing: 0;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                }
+                #cardRoot.card-safe-layout .card-safe-job {
+                  margin-top: 8px;
+                  max-width: 100%;
+                  font-size: 18px;
+                  line-height: 1.3;
+                  font-weight: 800;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                }
+                #cardRoot.card-safe-layout .card-safe-intro {
+                  margin-top: 16px;
+                  width: min(100%, 420px);
+                  max-height: 88px;
+                  font-size: 15px;
+                  line-height: 1.55;
+                  overflow: hidden;
+                  display: -webkit-box;
+                  -webkit-line-clamp: 3;
+                  -webkit-box-orient: vertical;
+                }
+                #cardRoot.card-safe-layout .card-safe-side {
+                  grid-column: 2;
+                  grid-row: 1;
+                  min-width: 0;
+                  display: grid;
+                  grid-template-columns: 132px minmax(0, 1fr);
+                  gap: 14px;
+                  align-items: start;
+                }
+                #cardRoot.card-safe-layout .card-safe-profile {
+                  width: 132px;
+                  height: 132px;
+                  border-radius: 20px;
+                  overflow: hidden;
+                }
+                #cardRoot.card-safe-layout .card-safe-meta {
+                  min-width: 0;
+                  display: grid;
+                  gap: 7px;
+                }
+                #cardRoot.card-safe-layout .card-safe-row {
+                  min-width: 0;
+                  min-height: 32px;
+                  max-height: 36px;
+                  padding: 7px 10px;
+                  border-radius: 10px;
+                  display: flex;
+                  align-items: center;
+                  font-size: 12.5px;
+                  line-height: 1.25;
+                  overflow: hidden;
+                }
+                #cardRoot.card-safe-layout #portfolioArea {
+                  grid-column: 1;
+                  grid-row: 2;
+                  width: 360px;
+                  height: 178px;
+                  align-self: start;
+                  justify-self: start;
+                  overflow: hidden;
+                }
+                #cardRoot.card-safe-layout #linkArea {
+                  display: none;
+                }
+                """;
+
+        return common + switch (code) {
+            case "simple_white" -> """
+                    #cardRoot.card-safe-simple-white {
+                      background: linear-gradient(180deg, #fffaf0 0%%, #ffffff 62%%, #f8fafc 100%%);
+                      color: #1f2937;
+                      border: 1px solid #eadcc6;
+                      --card-accent: %s;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-grid {
+                      grid-template-columns: 176px minmax(0, 1fr);
+                      grid-template-rows: 162px 218px;
+                      column-gap: 28px;
+                      row-gap: 20px;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-identity {
+                      grid-column: 2;
+                      grid-row: 1;
+                      padding: 8px 0 0;
+                      border-bottom: 1px solid color-mix(in srgb, var(--card-accent) 26%%, #eadcc6);
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-name {
+                      font-size: 38px;
+                      color: #111827;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-job { color: var(--card-accent); }
+                    #cardRoot.card-safe-simple-white .card-safe-intro {
+                      color: #4b5563;
+                      width: min(100%%, 520px);
+                      max-height: 58px;
+                      -webkit-line-clamp: 2;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-side {
+                      grid-column: 1;
+                      grid-row: 1 / span 2;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 12px;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-profile {
+                      width: 146px;
+                      height: 146px;
+                      background: #ffffff;
+                      border: 1px solid var(--card-accent);
+                      box-shadow: 0 10px 24px rgba(15, 23, 42, .06);
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-meta {
+                      gap: 8px;
+                    }
+                    #cardRoot.card-safe-simple-white .card-safe-row {
+                      color: #374151;
+                      background: rgba(255,255,255,.88);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 35%%, #e7e1d8);
+                    }
+                    #cardRoot.card-safe-simple-white #portfolioArea {
+                      grid-column: 2;
+                      grid-row: 2;
+                      border-radius: 18px;
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 42%%, #e2d8c8);
+                      background: rgba(255,255,255,.78);
+                      box-shadow: 0 18px 40px rgba(120, 90, 50, .09);
+                    }
+                    """.formatted(defaultText(accentColor, "#8a5a2b"));
+            case "portfolio_grid" -> """
+                    #cardRoot.card-safe-portfolio-grid {
+                      background: linear-gradient(135deg, #fff7ed 0%%, %s 48%%, #ecfeff 100%%);
+                      color: #172554;
+                      border: 1px solid #bae6fd;
+                      --card-accent: %s;
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-grid {
+                      grid-template-columns: 360px minmax(0, 1fr);
+                      grid-template-rows: 178px 202px;
+                      column-gap: 28px;
+                      row-gap: 20px;
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-identity {
+                      grid-column: 1;
+                      grid-row: 1;
+                      padding: 20px;
+                      border-radius: 22px;
+                      background: rgba(255,255,255,.72);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 24%%, rgba(14, 116, 144, .18));
+                      box-shadow: 0 14px 32px rgba(14, 116, 144, .08);
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-name {
+                      font-size: 34px;
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-job { color: var(--card-accent); }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-intro {
+                      color: #334155;
+                      max-height: 48px;
+                      -webkit-line-clamp: 2;
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-side {
+                      grid-column: 2;
+                      grid-row: 1 / span 2;
+                      display: flex;
+                      flex-direction: column;
+                      gap: 14px;
+                      padding: 18px;
+                      border-radius: 22px;
+                      background: rgba(255,255,255,.58);
+                      border: 1px solid rgba(14, 116, 144, .14);
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-profile {
+                      width: 150px;
+                      height: 150px;
+                      background: rgba(255,255,255,.9);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 40%%, rgba(14, 116, 144, .24));
+                      box-shadow: 0 14px 32px rgba(14, 116, 144, .12);
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-meta {
+                      grid-template-columns: 1fr 1fr;
+                      gap: 8px;
+                    }
+                    #cardRoot.card-safe-portfolio-grid .card-safe-row {
+                      color: #164e63;
+                      background: rgba(255,255,255,.72);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 32%%, rgba(14, 116, 144, .18));
+                    }
+                    #cardRoot.card-safe-portfolio-grid #portfolioArea {
+                      grid-column: 1;
+                      grid-row: 2;
+                      border-radius: 20px;
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 45%%, rgba(14, 116, 144, .28));
+                      background: rgba(15, 23, 42, .82);
+                      box-shadow: 0 20px 42px rgba(15, 23, 42, .16);
+                    }
+                    """.formatted(defaultText(backgroundColor, "#f0fdf4"), defaultText(accentColor, "#0f766e"));
+            default -> """
+                    #cardRoot.card-safe-modern-dark {
+                      background: linear-gradient(135deg, #07111f 0%%, %s 52%%, #063b3b 100%%);
+                      color: #f8fafc;
+                      border: 1px solid rgba(56, 189, 248, .22);
+                      --card-accent: %s;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-grid {
+                      grid-template-columns: minmax(0, 1fr) 320px;
+                      grid-template-rows: 184px 196px;
+                      column-gap: 40px;
+                      row-gap: 20px;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-identity {
+                      grid-column: 1;
+                      grid-row: 1 / span 2;
+                      justify-content: center;
+                      padding: 0 28px 0 0;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-name {
+                      font-size: 46px;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-job { color: var(--card-accent); }
+                    #cardRoot.card-safe-modern-dark .card-safe-intro {
+                      color: #cbd5e1;
+                      width: min(100%%, 430px);
+                      max-height: 112px;
+                      -webkit-line-clamp: 4;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-side {
+                      grid-column: 2;
+                      grid-row: 1;
+                      display: grid;
+                      grid-template-columns: 120px minmax(0, 1fr);
+                      gap: 12px;
+                      align-items: start;
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-profile {
+                      width: 120px;
+                      height: 120px;
+                      background: rgba(255,255,255,.08);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 38%%, rgba(148, 163, 184, .32));
+                      box-shadow: 0 18px 42px rgba(0,0,0,.24);
+                    }
+                    #cardRoot.card-safe-modern-dark .card-safe-row {
+                      color: #e2e8f0;
+                      background: rgba(15,23,42,.56);
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 28%%, rgba(56,189,248,.16));
+                    }
+                    #cardRoot.card-safe-modern-dark #portfolioArea {
+                      grid-column: 2;
+                      grid-row: 2;
+                      border-radius: 20px;
+                      border: 1px solid color-mix(in srgb, var(--card-accent) 38%%, rgba(56,189,248,.25));
+                      background: rgba(2,6,23,.62);
+                      box-shadow: 0 20px 44px rgba(0,0,0,.22);
+                    }
+                    """.formatted(defaultText(backgroundColor, "#0f172a"), defaultText(accentColor, "#67e8f9"));
+        };
     }
 
     private String applyBusinessText(String html, BusinessCard card) {
@@ -299,6 +648,9 @@ public class HtmlExportService {
 
         try {
             JsonNode root = objectMapper.readTree(layoutJson);
+            if (!isUserDrawingLayoutJson(root)) {
+                return html;
+            }
             JsonNode elements = root.path("elements");
             if (!elements.isArray()) {
                 return html;
@@ -336,6 +688,65 @@ public class HtmlExportService {
         } catch (Exception ignored) {
             return html;
         }
+    }
+
+    private boolean isUserDrawingLayoutJson(String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return false;
+        }
+
+        try {
+            return isUserDrawingLayoutJson(objectMapper.readTree(layoutJson));
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private boolean isUserDrawingLayoutJson(JsonNode root) {
+        return root != null
+                && root.has("canvasWidth")
+                && root.has("canvasHeight")
+                && root.path("elements").isArray();
+    }
+
+    private String extractTemplateCode(String layoutJson) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return "";
+        }
+
+        try {
+            return text(objectMapper.readTree(layoutJson).path("templateCode").asText());
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private String extractCssColor(String layoutJson, String fieldName) {
+        if (layoutJson == null || layoutJson.isBlank()) {
+            return "";
+        }
+
+        try {
+            return sanitizeCssColor(objectMapper.readTree(layoutJson).path(fieldName).asText());
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private String sanitizeCssColor(String value) {
+        String color = text(value).trim();
+        if (Pattern.compile("^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$").matcher(color).matches()) {
+            return color.toUpperCase();
+        }
+        return "";
+    }
+
+    private String normalizeTemplateCode(String templateCode) {
+        String value = text(templateCode).trim().toLowerCase();
+        return switch (value) {
+            case "simple_white", "portfolio_grid" -> value;
+            default -> "modern_dark";
+        };
     }
 
     private String moveElementsToCardRoot(String html, List<String> roles) {
@@ -447,8 +858,12 @@ public class HtmlExportService {
         return style.toString();
     }
 
-    private String applyRequiredElementLayoutFallbacks(String html, String css) {
+    private String applyRequiredElementLayoutFallbacks(String html, String css, boolean useAbsoluteFallbacks) {
         String updated = html == null ? "" : html;
+        if (!useAbsoluteFallbacks) {
+            return updated;
+        }
+
         updated = addInlineStyleToElement(updated, "profileImage", "position:absolute; overflow:hidden; z-index:3;", false);
 
         boolean phoneNeedsFallback = needsLooseContactFallback(updated, css, "phoneText");
@@ -784,9 +1199,12 @@ public class HtmlExportService {
             return true;
         }
 
-        return hasFallbackStyle(value, "companyText", "top:386px")
-                && (hasFallbackStyle(value, "phoneText", "top:344px")
-                || hasFallbackStyle(value, "emailText", "top:396px"));
+        boolean hasOldMetaFallback = hasFallbackStyle(value, "companyText", "top:386px");
+        boolean hasDrawingMetaFallback = hasFallbackStyle(value, "companyText", "top:276px")
+                || hasFallbackStyle(value, "departmentText", "top:300px");
+        boolean hasContactFallback = hasFallbackStyle(value, "phoneText", "top:344px")
+                || hasFallbackStyle(value, "emailText", "top:396px");
+        return (hasOldMetaFallback || hasDrawingMetaFallback) && hasContactFallback;
     }
 
     private boolean hasElementWithClassWithoutInlineStyle(String html, String id, String className) {

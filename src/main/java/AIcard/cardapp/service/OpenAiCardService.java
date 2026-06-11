@@ -314,6 +314,9 @@ public class OpenAiCardService {
                 - Templates are style references, not rigid layout locks. Keep the selected template's mood, palette, and visual language, but freely adjust placement when the user's text or extra items need more room.
                 - For all templates (modern_dark, simple_white, portfolio_grid), choose the final coordinates by content fit. Never reuse a template's original box coordinates if they make introText, contact, or portfolioArea collide.
                 - The three template concepts must have clearly different geometry. Do not create the same layout with only different colors.
+                - If Preferred color is provided, convert it to a CSS hex color and put it in layoutJson.pointColor. Also reflect it visibly in the generated CSS accent color.
+                - layoutJson.pointColor and layoutJson.backgroundColor must be valid CSS hex colors like "#2563EB". Do not return Korean color names in those fields.
+                - If Preferred color is not provided, choose pointColor and backgroundColor from the selected template concept.
 
                 Concept-specific layout rules:
                 - If layoutJson.templateCode is modern_dark:
@@ -328,6 +331,9 @@ public class OpenAiCardService {
                   - Use a minimal resume-like layout with a mostly white or off-white background, dark text, subtle warm-gray or brown accents, and generous whitespace.
                   - Avoid dark full-card backgrounds, heavy gradients, large decorative blocks, and many filled panels.
                   - Use a clean two-column or editorial layout: nameText/jobText/introText on the left, companyText/departmentText/emailText/phoneText as neat rows on the right.
+                  - Do not stack nameText, jobText, introText, profileImage, companyText, departmentText, emailText, and phoneText all in one vertical column. That will exceed the 480px card height.
+                  - Keep profileImage in a separate right/top zone or compact side area. Never place profileImage between introText and the contact/meta rows if that pushes phoneText below the bottom edge.
+                  - All four rows companyText, departmentText, emailText, and phoneText must be fully visible inside cardRoot without page scrolling. If space is tight, reduce gaps, use smaller row heights, or split the rows into a side column.
                   - Put portfolioArea as a quiet bottom band or subtle lower section with thin separators, not as a heavy colorful card.
                 - If layoutJson.templateCode is portfolio_grid:
                   - Use a clear creative grid layout, such as 2x2 blocks or a strong left column plus stacked right blocks.
@@ -405,6 +411,9 @@ public class OpenAiCardService {
                 - Prefer grouping emailText and phoneText together in one contact zone. If separated, they must still align cleanly and have matching widths, padding, and style.
                 - If you create a contact group wrapper, phoneText and emailText must be actual children inside that wrapper. Otherwise, give phoneText and emailText their own absolute/flex-grid positioning.
                 - Contact boxes should be at least 210px wide for email and at least 170px wide for phone, unless the text is shorter and still fully visible.
+                - phoneText and emailText must be fully visible inside the 860px x 480px cardRoot. Never let phoneText sit below the visible card or depend on browser/page scrolling.
+                - Do not stack more than five major vertical blocks in one column inside cardRoot. Major blocks include name/job group, introText, profileImage, company/department rows, email/phone rows, and portfolioArea. Split crowded content into two columns or a top/bottom layout.
+                - Before returning, estimate the total vertical height of each column including padding and gaps. If any column exceeds about 410px of inner content height, reduce gaps/font sizes or move some blocks to another column.
                 - If portfolioArea would collide with introText or contact details, move or resize the sections instead of stacking them.
                 - Treat portfolioArea as a real occupied panel even if your HTML leaves it empty. The server will inject content later, so reserve EXACTLY the 360px x 178px rectangle. Do not make it arbitrarily larger (e.g., 800px wide) than the reserved size.
                 - No other section may be behind, under, inside, or touching the future portfolioArea rectangle. Force portfolioArea to sit clear of long text blocks.
