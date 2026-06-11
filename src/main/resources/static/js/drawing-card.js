@@ -3,12 +3,17 @@
     const canvasHeight = 480;
     const minShapeWidth = 60;
     const minShapeHeight = 36;
+    const fixedRoleSizes = {
+        portfolioArea: { width: 360, height: 178 }
+    };
     const maxExtraItems = 8;
     const roleLabels = {
         "": "자동 추정",
         profileImage: "프로필 사진",
         nameText: "이름",
         jobText: "직무 / 직책",
+        companyText: "회사 / 소속",
+        departmentText: "부서 / 전공",
         introText: "자기소개",
         emailText: "이메일",
         phoneText: "전화번호",
@@ -23,6 +28,8 @@
     const personalRoleFields = [
         { role: "nameText", label: "이름", selector: "[name='displayName']" },
         { role: "jobText", label: "직무 / 직책", selector: "[name='jobTitle']" },
+        { role: "companyText", label: "회사 / 소속", selector: "[name='company']" },
+        { role: "departmentText", label: "부서 / 전공", selector: "[name='department']" },
         { role: "introText", label: "자기소개", selector: "[name='intro']" },
         { role: "emailText", label: "이메일", selector: "[name='email']" },
         { role: "phoneText", label: "전화번호", selector: "[name='phone']" }
@@ -219,6 +226,9 @@
         const handle = event.currentTarget;
         const shape = handle.closest(".drawing-shape");
         const direction = handle.dataset.resizeDirection || "";
+        if (isFixedSizeRole(getShapeRole(shape))) {
+            return;
+        }
         selectShape(shape);
 
         const startX = event.clientX;
@@ -332,6 +342,32 @@
         if (badge) {
             badge.textContent = roleLabels[role] || role;
         }
+        applyFixedRoleSize(shape, role);
+    }
+
+    function applyFixedRoleSize(shape, role) {
+        const roleName = role || getShapeRole(shape);
+        const size = fixedRoleSizes[roleName];
+        shape.classList.toggle("fixed-size", Boolean(size));
+        if (!size) {
+            return;
+        }
+
+        const nextWidth = Math.min(size.width, canvasWidth);
+        const nextHeight = Math.min(size.height, canvasHeight);
+        const currentLeft = parseFloat(shape.style.left || "0");
+        const currentTop = parseFloat(shape.style.top || "0");
+        const nextLeft = clamp(currentLeft, 0, canvasWidth - nextWidth);
+        const nextTop = clamp(currentTop, 0, canvasHeight - nextHeight);
+
+        shape.style.left = `${nextLeft}px`;
+        shape.style.top = `${nextTop}px`;
+        shape.style.width = `${nextWidth}px`;
+        shape.style.height = `${nextHeight}px`;
+    }
+
+    function isFixedSizeRole(role) {
+        return Object.prototype.hasOwnProperty.call(fixedRoleSizes, role);
     }
 
     function updateShapeSummary() {
@@ -579,6 +615,8 @@
         if (text.includes("프로필") || text.includes("사진") || text.includes("profile")) return "profileImage";
         if (text.includes("이름") || text.includes("name")) return "nameText";
         if (text.includes("직무") || text.includes("직책") || text.includes("job")) return "jobText";
+        if (text.includes("회사") || text.includes("소속") || text.includes("company")) return "companyText";
+        if (text.includes("부서") || text.includes("전공") || text.includes("department") || text.includes("major")) return "departmentText";
         if (text.includes("소개") || text.includes("intro")) return "introText";
         if (text.includes("메일") || text.includes("email")) return "emailText";
         if (text.includes("전화") || text.includes("phone")) return "phoneText";

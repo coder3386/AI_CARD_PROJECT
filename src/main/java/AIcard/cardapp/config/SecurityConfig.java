@@ -58,6 +58,20 @@ public class SecurityConfig {
                         .requestMatchers("/card/join", "/card/login", "/api/notices/**", "/api/contacts/**", "/card/api/**", "/api/**").permitAll()
                         .requestMatchers("/card/edit").authenticated()
                         .requestMatchers("/oauth/start", "/oauth/callback").permitAll()
+                        .requestMatchers("/public/card/**", "/dont").permitAll()
+                        .requestMatchers("/cards/select-type").permitAll()
+                        .requestMatchers("/cards/*/profile-image").permitAll()
+                        .requestMatchers(
+                                "/cards/new",
+                                "/cards/generate",
+                                "/cards/drawing/**",
+                                "/cards/my/**",
+                                "/cards/*/preview",
+                                "/cards/*/update-text",
+                                "/cards/*/fix-layout",
+                                "/cards/*/delete",
+                                "/cards/*/ai-fallback"
+                        ).authenticated()
                         //.requestMatchers("manager/").hasRole("MANAGER")
                         .anyRequest().permitAll() // 그 외 모든 요청은 로그인해야함
 

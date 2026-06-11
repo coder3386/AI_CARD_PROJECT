@@ -344,7 +344,7 @@ a {
 .btn-close {
     width: 100%;
     padding: 14px;
-    background-color: #007bff; /* 파란색 기본 버튼 (프로젝트 메인 포인트 컬러로 변경 가능) */
+    background-color: #8b5a2b; /* 파란색 기본 버튼 (프로젝트 메인 포인트 컬러로 변경 가능) */
     color: #ffffff;
     border: none;
     border-radius: 8px;
@@ -356,7 +356,7 @@ a {
 
 /* 버튼 마우스 호버 효과 */
 .btn-close:hover {
-    background-color: #0056b3;
+    background-color: #5d3a1a;
 }
 
 /* 3. 팝업 등장 애니메이션 효과 정의 */
